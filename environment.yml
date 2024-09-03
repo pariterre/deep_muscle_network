@@ -1,7 +1,9 @@
 # create a dev conda environment with: `make create_env` or `conda env create -f environment.yml`
-name: shoulder
+name: deep_muscle_network
 channels:
 - conda-forge
 dependencies:
 - python
-- torch
+- biorbd
+- scipy
+- pytorch
