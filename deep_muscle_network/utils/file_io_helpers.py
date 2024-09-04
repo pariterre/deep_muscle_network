@@ -1,13 +1,10 @@
 import logging
 import os
 
-import matplotlib.pyplot as plt
-import pandas as pd
-
 
 class FileIoHelpers:
     @staticmethod
-    def mkdir(folder_path):
+    def mkdir_if_not_exist(folder_path: str):
         """
         Create a new directory if it does not already exist. Otherwise, do nothing.
 

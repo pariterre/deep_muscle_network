@@ -23,28 +23,22 @@
 # import numpy as np
 # from neural_networks.CSVBatchWriterTestHyperparams import CSVBatchWriterTestHyperparams
 
-import biorbd
-from deep_muscle_network import HyperParametersModel, PredictionModelMode
-from deep_muscle_network.utils import FileIoHelpers
+import logging
 
-
-# TODO : setup logging for this file
+from deep_muscle_network import (
+    ReferenceModelAbstract,
+    ReferenceModelBiorbd,
+    PredictionModelOutputModes,
+    HyperParametersModel,
+    PredictionModel,
+)
 
 
 def main(
+    prediction_model: PredictionModel,
+    reference_model: ReferenceModelAbstract,
     hyper_parameters_model: HyperParametersModel,
-    prediction_model_mode: PredictionModelMode,
-    biorbd_model: biorbd.Model,
-    save_load_folder: str,
     force_retrain: bool,
-    muscle_name,
-    retrain,
-    file_path,
-    with_noise,
-    plot_preparation,
-    plot_loss_acc,
-    plot_loader,
-    save,
 ):
     """
     Main function to prepare, train, validate, test, and save a model.
@@ -53,43 +47,26 @@ def main(
     ----------
     hyper_parameters_model: HyperParametersModel
         HyperparametersModel, all hyperparameters chosen by the user.
-    prediction_model_mode: PredictionModelMode
+    prediction_model_output_mode: PredictionModelOutputModes
         Mode for the prediction model.
-    biorbd_model: biorbd.Model
-        The biorbd model that will be used to compute refence data.
-    save_load_folder: str
-        Path to the folder where the model will be loaded. If no model is found, then a new one will be trained and saved
-        in this folder. This behaviour can be overriden by setting [force_retrain] to True.
+    reference_model: ReferenceModelAbstract
+        Reference model for the prediction model. It is used to create the training, validation, and test datasets.
     force_retrain: bool
-        If True, the model will be retrained even if a model is found in the [save_load_folder]. If no model is found,
+        If True, the model will be retrained even if a model is found in the [save_and_load_folder]. If no model is found,
         then this parameter has no effect.
-
-
-
-    - folder_name: str, path/name of the folder containing all CSV data files for muscles (one for each muscle).
-    - muscle_name: str, name of the muscle.
-    - retrain: bool, True to train the model again.
-    - file_path: str, the path where the model will be saved after training.
-    - with_noise: bool, (default = True), True to include noisy data in the dataset for learning.
-    - plot_preparation: bool, True to show the distribution of all data preparation.
-    - plot_loss_acc: bool, True to show plot loss, accuracy, predictions/targets.
-    - plot_loader: bool, True to show plot comparing the loader data (train, validation, test) with the target data
-        Warning : This plot is not available if the output height is set too large, as there may be too many subplots to display!
-    - save: bool, True to save the model to file_path.
     """
 
     # Create a folder for save plots
-    folder_name_muscle = f"{save_load_folder}/{muscle_name}"
-    FileIoHelpers.mkdir(f"{folder_name_muscle}/_Model")  # Muscle/Model
-
     # Train_model if retrain == True or if none file_path already exist
-    if retrain or os.path.exists(f"{folder_name_muscle}/_Model/{file_path}") == False:
-        create_directory(f"{folder_name_muscle}/_Model/{file_path}")  # Muscle/Model
+    if not prediction_model.has_a_trained_model or force_retrain:
+        # Get the trainning set
+        data_set = reference_model.generate_dataset(data_points_count=25000)
 
         # Prepare datas for trainning
         train_loader, val_loader, test_loader, input_size, output_size, y_labels = create_loaders_from_folder(
             hyper_parameters_model,
-            prediction_model_mode,
+            prediction_model_output_mode,
+            reference_model,
             nb_q,
             nb_segment,
             num_datas_for_dataset=25000,
@@ -98,6 +75,7 @@ def main(
             with_noise=with_noise,
             plot=plot_preparation,
         )
+
         # Trainning
         model, _, _, _, _, _ = train_model_supervised_learning(
             train_loader,
@@ -116,9 +94,10 @@ def main(
             visualize_prediction_training(
                 model, f"{folder_name_muscle}/_Model/{file_path}", y_labels, train_loader, val_loader, test_loader
             )
+
     # Visualize : predictions/targets for all q variation
     visualize_prediction(
-        prediction_model_mode,
+        prediction_model_output_mode,
         hyper_parameters_model.batch_size,
         nb_q,
         nb_segment,
@@ -129,4 +108,10 @@ def main(
 
 
 if __name__ == "__main__":
-    main()
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    main(
+        prediction_model=PredictionModel(path="TrainingModels", output_mode=PredictionModelOutputModes.MUSCLE),
+        reference_model=ReferenceModelBiorbd(biorbd_model_path="models/Wu_DeGroote.bioMod", muscle_names=("PECM2",)),
+        hyper_parameters_model=HyperParametersModel.from_default("default"),
+        force_retrain=True,
+    )

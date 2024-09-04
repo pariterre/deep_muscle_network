@@ -1,9 +1,9 @@
 from enum import Enum, auto
 
 
-class PredictionModelMode(Enum):
+class PredictionModelOutputModes(Enum):
     """
-    Enumeration for different modes of operation.
+    Enumeration for different modes of the prediction model output.
 
     Attributes
     ----------
