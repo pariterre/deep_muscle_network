@@ -66,7 +66,7 @@ def main(
 
         # Trainning
         model, _, _, _, _, _ = prediction_model.train(
-            training_set=training_data_set, validation_set=validation_data_set
+            training_data_set=training_data_set, validation_data_set=validation_data_set
         )
         if plot_loader:
             # Visualize tranning : predictions/targets for loaders train, val and test

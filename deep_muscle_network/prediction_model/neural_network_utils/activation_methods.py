@@ -4,12 +4,12 @@ from enum import Enum
 import torch
 
 
-class ActivationMethodsAbstract(torch.nn.Module, ABC):
+class ActivationMethodAbstract(torch.nn.Module, ABC):
     def __init__(self):
-        super(ActivationMethodsAbstract, self).__init__()
+        super(ActivationMethodAbstract, self).__init__()
 
 
-class GeLU(ActivationMethodsAbstract):
+class GeLU(ActivationMethodAbstract):
     def __init__(self) -> None:
         """
         Gaussian Error Linear Unit (GeLU) activation function.

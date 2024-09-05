@@ -3,8 +3,8 @@ from typing import Self
 
 import torch
 
-from .activation_methods import ActivationMethodsAbstract
-from .loss_methods import LossMethodsAbstract, LossMethodConstructors
+from .activation_methods import ActivationMethodAbstract
+from .loss_methods import LossFunctionAbstract, LossFunctionConstructors
 from ..utils.prediction_model_folder_structure import PredictionModelFolderStructure
 
 
@@ -24,17 +24,9 @@ class NeuralNetworkModel:
     activations : list[ActivationMethodsAbstract]
         List of activation functions used in the model, the length of which should be exactly the
         same as 'hidden_layers_node_count'.
-    l1_penalty : float
-        L1 regularization penalty value.
-    l2_penalty : float
-        L2 regularization penalty value.
     learning_rate : float
         Learning rate for the optimizer.
-    num_epochs : int
-        Number of epochs for training.
-    criterion : LossMethodsAbstract
-        Loss function used for training.
-    dropout_prob : float
+    dropout_probability : float
         Dropout probability used in the network.
     use_batch_norm : bool
         Flag indicating if batch normalization is used.
@@ -43,18 +35,14 @@ class NeuralNetworkModel:
     model_name: str
     batch_size: int
     hidden_layers_node_count: tuple[int, ...]
-    activations: tuple[ActivationMethodsAbstract, ...]
-    l1_penalty: float
-    l2_penalty: float
+    activations: tuple[ActivationMethodAbstract, ...]
     learning_rate: float
-    num_epochs: int
-    criterion: LossMethodsAbstract
-    dropout_prob: float
+    dropout_probability: float
     use_batch_norm: bool
 
     # These are internal attributes which are properly set in [initialize] method
     is_initialized: bool = field(init=False, default=False)
-    prediction_model: torch.nn.Module = field(init=False, default=None)
+    prediction_model: "_NeuralNetworkPredictionModel" = field(init=False, default=None)
     optimizer: torch.optim.Optimizer = field(init=False, default=None)
 
     def __post_init__(self) -> None:
@@ -75,6 +63,7 @@ class NeuralNetworkModel:
         output_layer_node_count : int
             Number of nodes in the output layer.
         """
+        # TODO : Test this function
 
         # Initialize the model
         object.__setattr__(
@@ -92,14 +81,10 @@ class NeuralNetworkModel:
         cls,
         model_name: str,
         hidden_layers_node_count: tuple[int, ...],
-        activations: tuple[ActivationMethodsAbstract, ...],
+        activations: tuple[ActivationMethodAbstract, ...],
         batch_size: int = 64,
-        l1_penalty: float = 0.01,
-        l2_penalty: float = 0.01,
         learning_rate: float = 1e-2,
-        num_epochs: int = 1000,
-        criterion: LossMethodsAbstract = LossMethodConstructors.MODIFIED_HUBER(delta=0.2, factor=1.0),
-        dropout_prob: float = 0.2,
+        dropout_probability: float = 0.2,
         use_batch_norm: bool = True,
     ) -> Self:
         """
@@ -119,12 +104,8 @@ class NeuralNetworkModel:
             batch_size=batch_size,
             hidden_layers_node_count=hidden_layers_node_count,
             activations=activations,
-            l1_penalty=l1_penalty,
-            l2_penalty=l2_penalty,
             learning_rate=learning_rate,
-            num_epochs=num_epochs,
-            criterion=criterion,
-            dropout_prob=dropout_prob,
+            dropout_probability=dropout_probability,
             use_batch_norm=use_batch_norm,
         )
 
@@ -138,20 +119,8 @@ class NeuralNetworkModel:
         torch.nn.Module
             The PyTorch model.
         """
+        # TODO : Test this function
         return self._prediction_model
-
-    def set_criterion(self, criterion: LossMethodsAbstract) -> None:
-        """
-        Set the loss criterion for the model.
-
-        Parameters
-        ----------
-        criterion : LossMethodsAbstract
-            The loss criterion to be set for the model.
-        """
-        # TODO : Deal with the frozen=True attribute (a copy_with method?)
-        # TODO : Test this method
-        self.criterion = criterion
 
     def save(self, folder: PredictionModelFolderStructure) -> None:
         """
@@ -209,24 +178,27 @@ class _NeuralNetworkPredictionModel(torch.nn.Module):
         output_layer_node_count : int
             Number of nodes in the output layer.
         """
+        # TODO : Test this function
         super(_NeuralNetworkPredictionModel, self).__init__()
         layers_node_count = (
             (input_layer_node_count,) + neural_network_model.hidden_layers_node_count + (output_layer_node_count,)
         )
         activations = neural_network_model.activations
-        dropout_prob = neural_network_model.dropout_prob
+        dropout_probability = neural_network_model.dropout_probability
         use_batch_norm = neural_network_model.use_batch_norm
 
         # Initialize the layers of the neural network
         layers = torch.nn.ModuleList()
         for i in range(len(layers_node_count) - 1):
             layers.append(torch.nn.Linear(layers_node_count[i], layers_node_count[i + 1]))
-            if use_batch_norm:
-                layers.append(torch.nn.BatchNorm1d(layers_node_count[i + 1]))
             if i < len(layers_node_count) - 2:
-                layers.append(activations[i])  # TODO : Should we have a value for the last activation?
-            layers.append(torch.nn.Dropout(dropout_prob))
+                # Do not add activation and dropout for the output layer
+                if use_batch_norm:
+                    layers.append(torch.nn.BatchNorm1d(layers_node_count[i + 1]))
+                layers.append(activations[i])
+                layers.append(torch.nn.Dropout(dropout_probability))
         self._forward_model = torch.nn.Sequential(*layers)
+        # self._forward_model.double()  # TODO RENDU ICI
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -242,4 +214,5 @@ class _NeuralNetworkPredictionModel(torch.nn.Module):
         torch.Tensor
             Output tensor.
         """
+        # TODO : Test this function
         return self._forward_model(x)

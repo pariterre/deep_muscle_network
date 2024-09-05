@@ -5,9 +5,9 @@ from typing import override
 import torch
 
 
-class LossMethodsAbstract(torch.nn.Module, ABC):
+class LossFunctionAbstract(torch.nn.Module, ABC):
     def __init__(self):
-        super(LossMethodsAbstract, self).__init__()
+        super(LossFunctionAbstract, self).__init__()
 
     @abstractmethod
     def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
@@ -28,7 +28,7 @@ class LossMethodsAbstract(torch.nn.Module, ABC):
         """
 
 
-class ModifiedHuberLoss(LossMethodsAbstract):
+class LossFunctionModifiedHuber(LossFunctionAbstract):
     def __init__(self, delta: float = 1.0, factor: float = 1.5) -> None:
         """
         Modified Huber Loss function with an additional factor for scaling the loss based on absolute error.
@@ -41,7 +41,7 @@ class ModifiedHuberLoss(LossMethodsAbstract):
             Factor by which the loss is scaled based on the absolute error. Default is 1.5.
         """
 
-        super(ModifiedHuberLoss, self).__init__()
+        super(LossFunctionModifiedHuber, self).__init__()
         self.delta = delta
         self.factor = factor
 
@@ -57,7 +57,7 @@ class ModifiedHuberLoss(LossMethodsAbstract):
         return torch.mean(loss * (1 + self.factor * abs_error))
 
 
-class LogCoshLoss(LossMethodsAbstract):
+class LossFunctionLogCosh(LossFunctionAbstract):
     def __init__(self, factor: float = 1.5) -> None:
         """
         Log-Cosh Loss function with an optional scaling factor.
@@ -68,7 +68,7 @@ class LogCoshLoss(LossMethodsAbstract):
             Factor by which the loss is scaled based on the absolute error. Default is 1.5.
         """
 
-        super(LogCoshLoss, self).__init__()
+        super(LossFunctionLogCosh, self).__init__()
         self.factor = factor
 
     @override
@@ -79,7 +79,7 @@ class LogCoshLoss(LossMethodsAbstract):
         return torch.mean(logcosh * (1 + self.factor * torch.abs(error)))
 
 
-class ExponentialLoss(LossMethodsAbstract):
+class LossFunctionExponential(LossFunctionAbstract):
     def __init__(self, alpha=0.5):
         """
         Exponential Loss function with a scaling parameter.
@@ -89,7 +89,7 @@ class ExponentialLoss(LossMethodsAbstract):
         alpha : float
             Scaling factor for the exponential term. Default is 0.5.
         """
-        super(ExponentialLoss, self).__init__()
+        super(LossFunctionExponential, self).__init__()
         self.alpha = alpha
 
     @override
@@ -100,14 +100,14 @@ class ExponentialLoss(LossMethodsAbstract):
         return torch.mean(loss)
 
 
-class LossMethodConstructors(Enum):
+class LossFunctionConstructors(Enum):
     """
     Enum class for the loss functions used in the neural network model.
     """
 
-    MODIFIED_HUBER = ModifiedHuberLoss
-    LOG_COSH = LogCoshLoss
-    EXPONENTIAL = ExponentialLoss
+    MODIFIED_HUBER = LossFunctionModifiedHuber
+    LOG_COSH = LossFunctionLogCosh
+    EXPONENTIAL = LossFunctionExponential
 
     def __call__(self, *args, **kwargs):
         return self.value(*args, **kwargs)
