@@ -1,7 +1,7 @@
 from enum import Enum, auto
 
 
-class PredictionModelOutputModes(Enum):
+class BiorbdOutputModes(Enum):
     """
     Enumeration for different modes of the prediction model output.
 

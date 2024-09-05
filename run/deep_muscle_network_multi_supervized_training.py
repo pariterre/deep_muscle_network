@@ -14,7 +14,7 @@
 # from neural_networks.CSVBatchWriterTestHyperparams import CSVBatchWriterTestHyperparams
 
 
-from deep_muscle_network import HyperParametersModel, PredictionModelOutputModes
+from deep_muscle_network import PredictionModel, OutputModes
 
 def compute_time_testing_hyperparams(Hyperparams, time_per_configuration_secondes=60):
     """Compute an estimation of execution time for testing hyperparameter configurations.

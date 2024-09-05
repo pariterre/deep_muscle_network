@@ -1,13 +1,7 @@
-from .hyper_parameters_model import HyperParametersModel
-from .prediction_model import PredictionModel
-from .prediction_model_output_modes import PredictionModelOutputModes
-from .reference_model_abstract import ReferenceModelAbstract
-from .reference_model_biorbd import ReferenceModelBiorbd
+from .neural_network_utils import *
+from .utils import *
 
-__all__ = [
-    HyperParametersModel.__name__,
-    PredictionModel.__name__,
-    PredictionModelOutputModes.__name__,
-    ReferenceModelAbstract.__name__,
-    ReferenceModelBiorbd.__name__,
-]
+from .data_set import DataPoint
+from .prediction_model import PredictionModel
+
+__all__ = neural_network_utils.__all__ + utils.__all__ + [DataPoint.__name__, PredictionModel.__name__]

@@ -1,7 +1,6 @@
 import os
 
-from .prediction_model_output_modes import PredictionModelOutputModes
-from ..utils.file_io_helpers import FileIoHelpers
+from ...utils.file_io_helpers import FileIoHelpers
 
 
 class PredictionModelFolderStructure:
@@ -29,17 +28,20 @@ class PredictionModelFolderStructure:
         # TODO : Test this function
         return os.path.join(self._base_folder, "Models")
 
-    def hyper_parameters_path(self, output_mode: PredictionModelOutputModes) -> str:
+    @property
+    def prediction_model_output_mode_path(self) -> str:
         # TODO : Test this function
-        return os.path.join(self.trained_model_folder, f"hyper_parameters_{output_mode.name}.json")
+        return os.path.join(self.trained_model_folder, f"prediction_model_output_mode.json")
 
-    def trained_model_path(self, output_mode: PredictionModelOutputModes) -> str:
+    @property
+    def trained_model_path(self) -> str:
         # TODO : Test this function
-        return os.path.join(self.trained_model_folder, f"trained_model_{output_mode.name}.pth")
+        return os.path.join(self.trained_model_folder, f"trained_model.pth")
 
-    def has_a_trained_model(self, output_mode: PredictionModelOutputModes) -> bool:
+    @property
+    def has_a_trained_model(self) -> bool:
         # TODO : Test this function
-        return os.path.exists(self.trained_model_path(output_mode))
+        return os.path.exists(self.trained_model_path)
 
     @property
     def data_set_folder(self) -> str:

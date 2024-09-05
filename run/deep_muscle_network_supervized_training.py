@@ -27,17 +27,17 @@ import logging
 
 from deep_muscle_network import (
     ReferenceModelAbstract,
-    ReferenceModelBiorbd,
-    PredictionModelOutputModes,
-    HyperParametersModel,
     PredictionModel,
+    NeuralNetworkModel,
+    ActivationMethodConstructors,
+    ReferenceModelBiorbd,
+    BiorbdOutputModes,
 )
 
 
 def main(
     prediction_model: PredictionModel,
     reference_model: ReferenceModelAbstract,
-    hyper_parameters_model: HyperParametersModel,
     force_retrain: bool,
 ):
     """
@@ -45,12 +45,12 @@ def main(
 
     Parameters
     ----------
-    hyper_parameters_model: HyperParametersModel
-        HyperparametersModel, all hyperparameters chosen by the user.
-    prediction_model_output_mode: PredictionModelOutputModes
-        Mode for the prediction model.
+    prediction_model: PredictionModel
+        The prediction model to train.
     reference_model: ReferenceModelAbstract
         Reference model for the prediction model. It is used to create the training, validation, and test datasets.
+    neural_network_model: NeuralNetworkModel
+        The neural network model to use for the prediction model.
     force_retrain: bool
         If True, the model will be retrained even if a model is found in the [save_and_load_folder]. If no model is found,
         then this parameter has no effect.
@@ -59,35 +59,14 @@ def main(
     # Create a folder for save plots
     # Train_model if retrain == True or if none file_path already exist
     if not prediction_model.has_a_trained_model or force_retrain:
-        # Get the trainning set
-        data_set = reference_model.generate_dataset(data_points_count=25000)
-
-        # Prepare datas for trainning
-        train_loader, val_loader, test_loader, input_size, output_size, y_labels = create_loaders_from_folder(
-            hyper_parameters_model,
-            prediction_model_output_mode,
-            reference_model,
-            nb_q,
-            nb_segment,
-            num_datas_for_dataset=25000,
-            folder_name=f"{folder_name_muscle}",
-            muscle_name=muscle_name,
-            with_noise=with_noise,
-            plot=plot_preparation,
-        )
+        # Get the data sets
+        training_data_set = reference_model.generate_dataset(data_point_count=250)
+        validation_data_set = reference_model.generate_dataset(data_point_count=25)
+        test_data_set = reference_model.generate_dataset(data_point_count=25)
 
         # Trainning
-        model, _, _, _, _, _ = train_model_supervised_learning(
-            train_loader,
-            val_loader,
-            test_loader,
-            input_size,
-            output_size,
-            hyper_parameters_model,
-            f"{folder_name_muscle}/_Model/{file_path}",
-            plot_loss_acc,
-            save,
-            show_plot=True,
+        model, _, _, _, _, _ = prediction_model.train(
+            training_set=training_data_set, validation_set=validation_data_set
         )
         if plot_loader:
             # Visualize tranning : predictions/targets for loaders train, val and test
@@ -98,7 +77,7 @@ def main(
     # Visualize : predictions/targets for all q variation
     visualize_prediction(
         prediction_model_output_mode,
-        hyper_parameters_model.batch_size,
+        neural_network_model.batch_size,
         nb_q,
         nb_segment,
         nb_muscle,
@@ -110,8 +89,18 @@ def main(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     main(
-        prediction_model=PredictionModel(path="TrainingModels", output_mode=PredictionModelOutputModes.MUSCLE),
-        reference_model=ReferenceModelBiorbd(biorbd_model_path="models/Wu_DeGroote.bioMod", muscle_names=("PECM2",)),
-        hyper_parameters_model=HyperParametersModel.from_default("default"),
+        prediction_model=PredictionModel(
+            path="TrainedModels",
+            neural_network_model=NeuralNetworkModel.from_default(
+                "default",
+                hidden_layers_node_count=(32, 32),
+                activations=(ActivationMethodConstructors.GELU(), ActivationMethodConstructors.GELU()),
+            ),
+        ),
+        reference_model=ReferenceModelBiorbd(
+            biorbd_model_path="models/Wu_DeGroote.bioMod",
+            muscle_names=("PECM2", "PECM3"),
+            output_mode=BiorbdOutputModes.MUSCLE,
+        ),
         force_retrain=True,
     )

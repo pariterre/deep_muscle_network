@@ -4,16 +4,25 @@ from typing import override
 
 import biorbd
 import numpy as np
+import torch
 
-from .reference_model_abstract import ReferenceModelAbstract
-from .data_point import DataSet, DataPoint, DataPointInput, DataPointOutput
+from .biorbd_data_set import DataPointInputBiorbd, DataPointOutputBiorbd
+from .biorbd_output_modes import BiorbdOutputModes
+from ..reference_model_abstract import ReferenceModelAbstract
+from ...prediction_model.data_set import DataSet, DataPoint
 
 _logger = logging.getLogger(__name__)
 
 
 class ReferenceModelBiorbd(ReferenceModelAbstract):
 
-    def __init__(self, biorbd_model_path: str, muscle_names: tuple[str, ...], with_noise: bool = True) -> None:
+    def __init__(
+        self,
+        biorbd_model_path: str,
+        muscle_names: tuple[str, ...],
+        with_noise: bool = True,
+        output_mode: BiorbdOutputModes = BiorbdOutputModes.TORQUE_MUS_DLMT_DQ,
+    ) -> None:
         """
         Constructor of the ReferenceModelBiorbd class.
 
@@ -25,14 +34,36 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
             Tuple of muscle names to used in the model, they should match existing muscles in the model.
         with_noise: bool
             If True, noise will be added to the data when generating the dataset using [generate_data_set].
+        output_mode: BiorbdOutputModes
+            The output mode of the model
         """
         super(ReferenceModelBiorbd, self).__init__(with_noise=with_noise)
 
         self._model = biorbd.Model(biorbd_model_path)
         self._muscle_names = muscle_names
+        self._output_mode = output_mode
+
+    @property
+    @override
+    def input_labels(self) -> tuple[str]:
+        # TODO : Test this function
+        return (*self.muscle_names, *self.q_names, *self.qdot_names)
+
+    @property
+    @override
+    def output_labels(self) -> tuple[str]:
+        # TODO : Test this function
+        muscle_tendon_lengths_names = [f"{muscle_name}_tendon_length" for muscle_name in self.muscle_names]
+        muscle_tendon_length_jacobian_names = []
+        for muscle_name in self.muscle_names:
+            muscle_tendon_length_jacobian_names += [f"{muscle_name}_{q_name}" for q_name in self.q_names]
+        muscle_force_names = [f"{muscle_name}_force" for muscle_name in self.muscle_names]
+        tau_names = self.tau_names
+
+        return (*muscle_tendon_lengths_names, *muscle_tendon_length_jacobian_names, *muscle_force_names, *tau_names)
 
     @override
-    def generate_dataset(self, data_points_count: int) -> DataSet:
+    def generate_dataset(self, data_point_count: int) -> DataSet:
         # TODO : Test this function
         # Extract the min and max for each q, qdot and activations
         q_ranges = np.array([(q_range[0], q_range[1]) for q_range in self._get_q_ranges()]).T
@@ -40,15 +71,15 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         activations_ranges = np.array([(0.0, 1.0) for _ in range(self._muscle_count)]).T
 
         # Generate a data set by selecting randomly combinations of q, qdot, and activations
-        _logger.info(f"Generating a dataset of {data_points_count} data points. This may take a while...")
+        _logger.info(f"Generating a dataset of {data_point_count} data points. This may take a while...")
         tic = time()
-        data_set: DataSet = []
-        for _ in range(data_points_count):
+        data_set = DataSet(input_labels=self.input_labels, output_labels=self.output_labels)
+        for _ in range(data_point_count):
             # Generate random data from the q, qdot, and activations ranges
-            data_point_input = DataPointInput(
-                activations=np.random.uniform(*activations_ranges),
-                q=np.random.uniform(*q_ranges),
-                qdot=np.random.uniform(*qdot_ranges),
+            data_point_input = DataPointInputBiorbd(
+                activations=torch.tensor(np.random.uniform(*activations_ranges)),
+                q=torch.tensor(np.random.uniform(*q_ranges)),
+                qdot=torch.tensor(np.random.uniform(*qdot_ranges)),
             )
 
             # Compute a data point from this input
@@ -56,6 +87,46 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
             data_set.append(DataPoint(input=data_point_input, output=data_point_output))
 
         _logger.info(f"Dataset generated in {time() - tic:.2f} seconds.")
+        return data_set
+
+    @property
+    def q_names(self) -> tuple[str, ...]:
+        """
+        Get the names of the degrees of freedom in the model.
+
+        Returns
+        -------
+        tuple[str, ...]
+            Tuple of degree of freedom names.
+        """
+        # TODO : Test this function
+        return tuple(f"q_{name.to_string().lower()}" for name in self._model.nameDof())
+
+    @property
+    def qdot_names(self) -> tuple[str, ...]:
+        """
+        Get the names of the generalized velocities in the model.
+
+        Returns
+        -------
+        tuple[str, ...]
+            Tuple of generalized velocity names.
+        """
+        # TODO : Test this function
+        return tuple(f"qdot_{name.to_string().lower()}" for name in self._model.nameDof())
+
+    @property
+    def tau_names(self) -> tuple[str, ...]:
+        """
+        Get the names of the generalized forces in the model.
+
+        Returns
+        -------
+        tuple[str, ...]
+            Tuple of generalized force names.
+        """
+        # TODO : Test this function
+        return tuple(f"tau_{name.to_string().lower()}" for name in self._model.nameDof())
 
     @property
     def muscle_names(self) -> tuple[str, ...]:
@@ -114,7 +185,7 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         biorbd_muscle_names = tuple(names.to_string() for names in self._model.muscleNames())
         return tuple(biorbd_muscle_names.index(muscle) for muscle in self._muscle_names)
 
-    def _compute_data_point_output(self, data_point_input: DataPointInput) -> DataPointOutput:
+    def _compute_data_point_output(self, data_point_input: DataPointInputBiorbd) -> DataPointOutputBiorbd:
         """
         Compute a new DataPoint.
         Note, it automatically updates the internal state of the model according to the q and qdot values.
@@ -127,9 +198,9 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         # TODO : Test this function
 
         # Extract the inputs
-        activations = data_point_input.activations
-        q = data_point_input.q
-        qdot = data_point_input.qdot
+        activations = np.array(data_point_input.activations)
+        q = np.array(data_point_input.q)
+        qdot = np.array(data_point_input.qdot)
 
         # Update the internal state of the model
         updated_model = self._model.UpdateKinematicsCustom(q, qdot)
@@ -153,9 +224,9 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         tau = -muscle_tendon_lengths_jacobian.T @ muscle_forces
 
         # Compute
-        return DataPointOutput(
-            muscle_tendon_lengths=muscle_tendon_lengths,
-            muscle_tendon_lengths_jacobian=muscle_tendon_lengths_jacobian,
-            muscle_forces=muscle_forces,
-            tau=tau,
+        return DataPointOutputBiorbd(
+            muscle_tendon_lengths=torch.tensor(muscle_tendon_lengths),
+            muscle_tendon_lengths_jacobian=torch.tensor(muscle_tendon_lengths_jacobian),
+            muscle_forces=torch.tensor(muscle_forces),
+            tau=torch.tensor(tau),
         )
