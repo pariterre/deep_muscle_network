@@ -54,7 +54,7 @@ class LossFunctionModifiedHuber(LossFunctionAbstract):
         quadratic = torch.min(abs_error, delta_tensor)
         linear = abs_error - quadratic
         loss = 0.5 * quadratic**2 + delta_tensor * linear
-        return torch.mean(loss * (1 + self.factor * abs_error))
+        return torch.mean(loss * (1 + self.factor * abs_error), axis=1)
 
 
 class LossFunctionLogCosh(LossFunctionAbstract):
@@ -76,7 +76,7 @@ class LossFunctionLogCosh(LossFunctionAbstract):
         # TODO : Test this method
         error = y_true - y_pred
         logcosh = torch.log(torch.cosh(error))
-        return torch.mean(logcosh * (1 + self.factor * torch.abs(error)))
+        return torch.mean(logcosh * (1 + self.factor * torch.abs(error)), axis=1)
 
 
 class LossFunctionExponential(LossFunctionAbstract):
@@ -97,7 +97,7 @@ class LossFunctionExponential(LossFunctionAbstract):
         # TODO : Test this method
         error = torch.abs(y_true - y_pred)
         loss = torch.exp(self.alpha * error) - 1
-        return torch.mean(loss)
+        return torch.mean(loss, axis=1)
 
 
 class LossFunctionConstructors(Enum):

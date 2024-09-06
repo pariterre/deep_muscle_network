@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Self
 
 import torch
 
@@ -100,6 +101,32 @@ class DataSet(torch.utils.data.Dataset):
         return len(self._data_points)
 
     @property
+    def inputs(self) -> torch.Tensor:
+        """
+        Get all the inputs in the dataset.
+
+        Returns
+        -------
+        list[torch.Tensor]
+            List of all the inputs.
+        """
+        # TODO : Test this function
+        return torch.stack([data_point.input.vector for data_point in self._data_points])
+
+    @property
+    def outputs(self) -> torch.Tensor:
+        """
+        Get all the outputs in the dataset.
+
+        Returns
+        -------
+        list[torch.Tensor]
+            List of all the outputs.
+        """
+        # TODO : Test this function
+        return torch.stack([data_point.output.vector for data_point in self._data_points])
+
+    @property
     def input_len(self) -> int:
         """
         Get the length of the input.
@@ -125,10 +152,19 @@ class DataSet(torch.utils.data.Dataset):
         # TODO : Test this function
         return len(self.output_labels)
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: slice | int) -> Self:
         # TODO : Test this function
-        data_point = self._data_points[idx]
-        return data_point.input.vector, data_point.output.vector
+        if isinstance(index, int):
+            index = slice(index, index + 1)
+
+        data_set = DataSet(input_labels=self.input_labels, output_labels=self.output_labels)
+        object.__setattr__(data_set, "_data_points", self._data_points[index])
+        return data_set
+
+    def __iter__(self):
+        # TODO : Test this function
+        for index in range(len(self._data_points)):
+            yield self.__getitem__(index)
 
     def __repr__(self) -> str:
         # TODO : Test this function

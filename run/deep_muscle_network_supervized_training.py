@@ -30,6 +30,7 @@ from deep_muscle_network import (
     PredictionModel,
     NeuralNetworkModel,
     ActivationMethodConstructors,
+    StoppingConditionConstructors,
     ReferenceModelBiorbd,
     BiorbdOutputModes,
 )
@@ -38,6 +39,7 @@ from deep_muscle_network import (
 def main(
     prediction_model: PredictionModel,
     reference_model: ReferenceModelAbstract,
+    number_training_data_points: tuple[int, int],
     force_retrain: bool,
 ):
     """
@@ -51,6 +53,8 @@ def main(
         Reference model for the prediction model. It is used to create the training, validation, and test datasets.
     neural_network_model: NeuralNetworkModel
         The neural network model to use for the prediction model.
+    number_training_data_points: tuple[int, int]
+        Number of training and validation data points to use for training the model.
     force_retrain: bool
         If True, the model will be retrained even if a model is found in the [save_and_load_folder]. If no model is found,
         then this parameter has no effect.
@@ -58,32 +62,20 @@ def main(
 
     # Create a folder for save plots
     # Train_model if retrain == True or if none file_path already exist
-    if not prediction_model.has_a_trained_model or force_retrain:
-        # Get the data sets
-        training_data_set = reference_model.generate_dataset(data_point_count=250)
-        validation_data_set = reference_model.generate_dataset(data_point_count=25)
-        test_data_set = reference_model.generate_dataset(data_point_count=25)
-
-        # Trainning
-        model, _, _, _, _, _ = prediction_model.train(
-            training_data_set=training_data_set, validation_data_set=validation_data_set
+    if not prediction_model.has_a_trained_model(reference_model=reference_model) or force_retrain:
+        prediction_model.train(
+            reference_model=reference_model,
+            number_data_points=number_training_data_points,
+            stopping_conditions=(
+                StoppingConditionConstructors.MAX_EPOCHS(max_epochs=1000),
+                StoppingConditionConstructors.HAS_STOPPED_IMPROVING(patience=50, epsilon=1e-5),
+            ),
         )
-        if plot_loader:
-            # Visualize tranning : predictions/targets for loaders train, val and test
-            visualize_prediction_training(
-                model, f"{folder_name_muscle}/_Model/{file_path}", y_labels, train_loader, val_loader, test_loader
-            )
+    else:
+        prediction_model.load(reference_model=reference_model)
 
-    # Visualize : predictions/targets for all q variation
-    visualize_prediction(
-        prediction_model_output_mode,
-        neural_network_model.batch_size,
-        nb_q,
-        nb_segment,
-        nb_muscle,
-        f"{folder_name_muscle}/_Model/{file_path}",
-        f"{folder_name_muscle}/plot_all_q_variation_",
-    )
+    test_data_set = reference_model.generate_dataset(data_point_count=25)
+    predictions = prediction_model.predict(data_set=test_data_set)
 
 
 if __name__ == "__main__":
@@ -102,5 +94,6 @@ if __name__ == "__main__":
             muscle_names=("PECM2", "PECM3"),
             output_mode=BiorbdOutputModes.MUSCLE,
         ),
+        number_training_data_points=(2500, 250),
         force_retrain=True,
     )

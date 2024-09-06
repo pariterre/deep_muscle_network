@@ -33,15 +33,13 @@ class PredictionModelFolderStructure:
         # TODO : Test this function
         return os.path.join(self.trained_model_folder, f"prediction_model_output_mode.json")
 
-    @property
-    def trained_model_path(self) -> str:
+    def trained_model_path(self, model_name: str) -> str:
         # TODO : Test this function
-        return os.path.join(self.trained_model_folder, f"trained_model.pth")
+        return os.path.join(self.trained_model_folder, f"{model_name}.pth")
 
-    @property
-    def has_a_trained_model(self) -> bool:
+    def has_a_trained_model(self, model_name: str) -> bool:
         # TODO : Test this function
-        return os.path.exists(self.trained_model_path)
+        return os.path.exists(self.trained_model_path(model_name))
 
     @property
     def data_set_folder(self) -> str:

@@ -45,6 +45,11 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
 
     @property
     @override
+    def name(self) -> str:
+        return f"Biorbd_{self._output_mode.name}"
+
+    @property
+    @override
     def input_labels(self) -> tuple[str]:
         # TODO : Test this function
         return (*self.muscle_names, *self.q_names, *self.qdot_names)

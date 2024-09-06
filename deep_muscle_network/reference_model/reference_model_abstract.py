@@ -9,6 +9,13 @@ class ReferenceModelAbstract(ABC):
 
     @property
     @abstractmethod
+    def name(self) -> str:
+        """
+        Get the name of the reference model.
+        """
+
+    @property
+    @abstractmethod
     def input_labels(self) -> tuple[str]:
         """
         Get the labels for the inputs. The labels should match the DataPointInput get from the [generate_data_set] method.

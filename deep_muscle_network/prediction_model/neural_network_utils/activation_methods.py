@@ -9,13 +9,14 @@ class ActivationMethodAbstract(torch.nn.Module, ABC):
         super(ActivationMethodAbstract, self).__init__()
 
 
-class GeLU(ActivationMethodAbstract):
+class GeLU(torch.nn.GELU, ActivationMethodAbstract):
     def __init__(self) -> None:
         """
         Gaussian Error Linear Unit (GeLU) activation function.
         """
 
         super(GeLU, self).__init__()
+        ActivationMethodAbstract.__init__(self)
 
 
 class ActivationMethodConstructors(Enum):

@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
+import json
 from typing import Self
 
 import torch
 
 from .activation_methods import ActivationMethodAbstract
-from .loss_methods import LossFunctionAbstract, LossFunctionConstructors
 from ..utils.prediction_model_folder_structure import PredictionModelFolderStructure
 
 
@@ -109,53 +109,47 @@ class NeuralNetworkModel:
             use_batch_norm=use_batch_norm,
         )
 
-    @property
-    def torch_model(self) -> torch.nn.Module:
-        """
-        Get the PyTorch model.
-
-        Returns
-        -------
-        torch.nn.Module
-            The PyTorch model.
-        """
-        # TODO : Test this function
-        return self._prediction_model
-
-    def save(self, folder: PredictionModelFolderStructure) -> None:
+    def save(self, model_name: str, folder: PredictionModelFolderStructure) -> None:
         """
         Save the model configuration to a file.
 
         Parameters
         ----------
-        path : str
-            Path to the file where the model configuration is to be saved.
+        model_name : str
+            Name of the model.
+        folder : PredictionModelFolderStructure
+            Folder structure where the model configuration will be saved.
         """
 
-        # TODO : Implement the save method
         # TODO : Test this method
-        file_path = folder.prediction_model_output_mode_path
-        raise NotImplementedError("The save method is not implemented yet.")
+        file_path = folder.trained_model_path(model_name=model_name)
+        torch.save(self.prediction_model.state_dict(), file_path)
 
-    @classmethod
-    def load(cls, folder: PredictionModelFolderStructure) -> Self:
+    def load(self, model_name: str, folder: PredictionModelFolderStructure, weigths_only: bool = True) -> None:
         """
         Load the model configuration from a file.
 
         Parameters
         ----------
-        path : str
-            Path to the file where the model configuration is saved.
+        model_name : str
+            Name of the model.
+        folder : PredictionModelFolderStructure
+            Folder structure where the model configuration will be loaded.
+        weigths_only : bool
+            If True, only the weights of the model are loaded. According to the PyTorch documentation, this is the
+            recommended way to load a model as it is more secure. This implies that [initialize] must be called before
+            calling this method.
 
         Returns
         -------
         HyperParametersModel
             The model configuration loaded from the file.
         """
-        # TODO : Implement the load method
+
         # TODO : Test this method
-        file_path = folder.prediction_model_output_mode_path
-        raise NotImplementedError("The load method is not implemented yet.")
+        self.prediction_model.load_state_dict(
+            torch.load(folder.trained_model_path(model_name=model_name), weights_only=weigths_only)
+        )
 
 
 class _NeuralNetworkPredictionModel(torch.nn.Module):
@@ -180,25 +174,27 @@ class _NeuralNetworkPredictionModel(torch.nn.Module):
         """
         # TODO : Test this function
         super(_NeuralNetworkPredictionModel, self).__init__()
-        layers_node_count = (
-            (input_layer_node_count,) + neural_network_model.hidden_layers_node_count + (output_layer_node_count,)
-        )
+        first_and_hidden_layers_node_count = (input_layer_node_count,) + neural_network_model.hidden_layers_node_count
         activations = neural_network_model.activations
         dropout_probability = neural_network_model.dropout_probability
         use_batch_norm = neural_network_model.use_batch_norm
 
         # Initialize the layers of the neural network
         layers = torch.nn.ModuleList()
-        for i in range(len(layers_node_count) - 1):
-            layers.append(torch.nn.Linear(layers_node_count[i], layers_node_count[i + 1]))
-            if i < len(layers_node_count) - 2:
-                # Do not add activation and dropout for the output layer
-                if use_batch_norm:
-                    layers.append(torch.nn.BatchNorm1d(layers_node_count[i + 1]))
-                layers.append(activations[i])
-                layers.append(torch.nn.Dropout(dropout_probability))
+        for i in range(len(first_and_hidden_layers_node_count) - 1):
+            layers.append(
+                torch.nn.Linear(first_and_hidden_layers_node_count[i], first_and_hidden_layers_node_count[i + 1])
+            )
+            if use_batch_norm:
+                torch.nn.BatchNorm1d(first_and_hidden_layers_node_count[i + 1])
+            layers.append(activations[i])
+            layers.append(torch.nn.Dropout(dropout_probability))
+        layers.append(torch.nn.Linear(first_and_hidden_layers_node_count[-1], output_layer_node_count))
         self._forward_model = torch.nn.Sequential(*layers)
-        # self._forward_model.double()  # TODO RENDU ICI
+        self._forward_model.double()
+
+        # By default, put the model in evaluation mode
+        self.eval()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
