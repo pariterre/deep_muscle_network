@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Deep Muscle Network, supervized training",
+            "name": "Supervized training",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/run/deep_muscle_network_supervized_training.py",
+            "program": "${workspaceFolder}/run/supervized_training.py",
             "cwd": "${workspaceFolder}/run",
             "console": "integratedTerminal"
         },

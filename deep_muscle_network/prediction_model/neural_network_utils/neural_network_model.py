@@ -193,7 +193,6 @@ class _NeuralNetworkPredictionModel(torch.nn.Module):
         self._forward_model = torch.nn.Sequential(*layers)
         self._forward_model.double()
 
-        # By default, put the model in evaluation mode
         self.eval()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -211,4 +210,7 @@ class _NeuralNetworkPredictionModel(torch.nn.Module):
             Output tensor.
         """
         # TODO : Test this function
-        return self._forward_model(x)
+        output = torch.Tensor(x.shape[0], self._forward_model[-1].out_features)
+        for i, data in enumerate(x):
+            output[i, :] = self._forward_model(data)
+        return output

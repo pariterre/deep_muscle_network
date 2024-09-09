@@ -45,10 +45,10 @@ class StoppingConditionMaxEpochs(StoppingConditionsAbstract):
 
     @override
     def should_stop(self, current_loss: float) -> bool:
-        self._current_epoch += 1
-        if self._current_epoch >= self._max_epochs:
+        if self._current_epoch > self._max_epochs:
             _logger.info(f"Stopping training after maximum of {self._max_epochs} epochs reached.")
             return True
+        self._current_epoch += 1
         return False
 
 

@@ -1,28 +1,3 @@
-# from neural_networks.data_preparation import create_loaders_from_folder, dataloader_to_tensor
-# from neural_networks.data_tranning import train_model_supervised_learning
-# from neural_networks.activation_functions import *
-# import os
-# from neural_networks.save_model import measure_time, save_model, main_function_model, del_saved_model
-# from neural_networks.plot_visualisation import (
-#     visualize_prediction_training,
-#     visualize_prediction,
-#     mean_distance,
-#     compute_pourcentage_error,
-# )
-# from itertools import product
-# from neural_networks.Loss import *
-# from neural_networks.ModelHyperparameters import ModelHyperparameters
-# from neural_networks.file_directory_operations import (
-#     create_directory,
-#     save_text_to_file,
-#     save_informations_model,
-#     get_min_value_from_csv,
-# )
-# import time
-# from neural_networks.plot_pareto_front import plot_results_try_hyperparams
-# import numpy as np
-# from neural_networks.CSVBatchWriterTestHyperparams import CSVBatchWriterTestHyperparams
-
 import logging
 
 from deep_muscle_network import (
@@ -33,6 +8,8 @@ from deep_muscle_network import (
     StoppingConditionConstructors,
     ReferenceModelBiorbd,
     BiorbdOutputModes,
+    PlotterAbstract,
+    PlotterMatplotlib,
 )
 
 
@@ -41,6 +18,7 @@ def main(
     reference_model: ReferenceModelAbstract,
     number_training_data_points: tuple[int, int],
     force_retrain: bool,
+    plotter: PlotterAbstract,
 ):
     """
     Main function to prepare, train, validate, test, and save a model.
@@ -58,6 +36,8 @@ def main(
     force_retrain: bool
         If True, the model will be retrained even if a model is found in the [save_and_load_folder]. If no model is found,
         then this parameter has no effect.
+    plotter: PlotterAbstract
+        The plotter to use to visualize the training, validation, and test results.
     """
 
     # Create a folder for save plots
@@ -70,12 +50,16 @@ def main(
                 StoppingConditionConstructors.MAX_EPOCHS(max_epochs=1000),
                 StoppingConditionConstructors.HAS_STOPPED_IMPROVING(patience=50, epsilon=1e-5),
             ),
+            plotter=plotter,
         )
     else:
         prediction_model.load(reference_model=reference_model)
 
-    test_data_set = reference_model.generate_dataset(data_point_count=25)
-    predictions = prediction_model.predict(data_set=test_data_set)
+    test_data_set = reference_model.generate_dataset(data_point_count=250)
+    test_data_set.fill_predictions(prediction_model, reference_model)
+
+    # Vizualize the prediction quality
+    plotter.plot_prediction(test_data_set)
 
 
 if __name__ == "__main__":
@@ -96,4 +80,5 @@ if __name__ == "__main__":
         ),
         number_training_data_points=(2500, 250),
         force_retrain=True,
+        plotter=PlotterMatplotlib(),
     )

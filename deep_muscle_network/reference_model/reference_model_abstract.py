@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-from ..prediction_model.data_set import DataSet
+import torch
+
+from ..prediction_model.data_set import DataSet, DataCoordinatesAbstract
 
 
 class ReferenceModelAbstract(ABC):
@@ -38,6 +40,38 @@ class ReferenceModelAbstract(ABC):
             Labels for the outputs of the [generate_data_set] method.
         """
 
+    @abstractmethod
+    def input_vector_to_coordinates(self, input: torch.Tensor) -> DataCoordinatesAbstract:
+        """
+        Dispatch the input vector to the appropriate DataCoordinatesAbstract object.
+
+        Parameters
+        ----------
+        input: torch.Tensor
+            The input vector.
+
+        Returns
+        -------
+        DataCoordinatesAbstract
+            The DataCoordinatesAbstract object.
+        """
+
+    @abstractmethod
+    def output_vector_to_coordinates(self, output: torch.Tensor) -> DataCoordinatesAbstract:
+        """
+        Dispatch the output vector to the appropriate DataCoordinatesAbstract object.
+
+        Parameters
+        ----------
+        output: torch.Tensor
+            The output vector.
+
+        Returns
+        -------
+        DataCoordinatesAbstract
+            The DataCoordinatesAbstract object.
+        """
+
     @property
     def with_noise(self) -> bool:
         # TODO : Test this function
@@ -53,4 +87,16 @@ class ReferenceModelAbstract(ABC):
         data_point_count: int
             Number of DataPoint to generate. For each DataPoint, a set of DataPointInput is randomly generated, and the
             appropriate DataPointOutput is computed.
+        """
+
+    @property
+    @abstractmethod
+    def scaling_vector(self) -> torch.Tensor:
+        """
+        Get the scaling vector to normalize the output vector (normalization /=, denormalization *=).
+
+        Returns
+        -------
+        torch.Tensor
+            The scaling vector.
         """

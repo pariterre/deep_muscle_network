@@ -22,6 +22,10 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         muscle_names: tuple[str, ...],
         with_noise: bool = True,
         output_mode: BiorbdOutputModes = BiorbdOutputModes.TORQUE_MUS_DLMT_DQ,
+        muscle_tendon_length_normalization: float = 1.0,
+        muscle_tendon_lengths_jacobian_normalization: float = 0.1,
+        muscle_forces_normalization: float = 1000.0,
+        tau_normalization: float = 100.0,
     ) -> None:
         """
         Constructor of the ReferenceModelBiorbd class.
@@ -42,6 +46,11 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         self._model = biorbd.Model(biorbd_model_path)
         self._muscle_names = muscle_names
         self._output_mode = output_mode
+
+        self._muscle_tendon_length_scale = muscle_tendon_length_normalization
+        self._muscle_tendon_lengths_jacobian_scale = muscle_tendon_lengths_jacobian_normalization
+        self._muscle_forces_scale = muscle_forces_normalization
+        self._tau_scale = tau_normalization
 
     @property
     @override
@@ -68,12 +77,45 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         return (*muscle_tendon_lengths_names, *muscle_tendon_length_jacobian_names, *muscle_force_names, *tau_names)
 
     @override
+    def input_vector_to_coordinates(self, input: torch.Tensor) -> DataPointInputBiorbd:
+        # TODO : Test this function
+        return DataPointInputBiorbd(
+            activations=input[: self.muscle_count],
+            q=input[self.muscle_count : self.muscle_count + self._model.nbQ()],
+            qdot=input[self.muscle_count + self._model.nbQ() :],
+        )
+
+    @override
+    def output_vector_to_coordinates(self, output: torch.Tensor) -> DataPointOutputBiorbd:
+        # TODO : Test this function
+        n_mus = self.muscle_count
+        n_q = self.q_count
+        n_tau = self.tau_count
+        if output.shape[0] != n_mus + n_mus * n_q + n_mus + n_tau:
+            raise ValueError(
+                f"The output vector should have a length of {n_mus + n_mus * n_q + n_mus + n_tau}, "
+                f"but has a length of {output.shape[0]}."
+            )
+
+        muscle_tendon_lengths = output[:n_mus]
+        muscle_tendon_lengths_jacobian = output[n_mus : n_mus + n_mus * n_q].reshape(n_mus, n_q)
+        muscle_forces = output[n_mus + n_mus * n_q : n_mus + n_mus * n_q + n_mus]
+        tau = output[n_mus + n_mus * n_q + n_mus :]
+
+        return DataPointOutputBiorbd(
+            muscle_tendon_lengths=muscle_tendon_lengths,
+            muscle_tendon_lengths_jacobian=muscle_tendon_lengths_jacobian,
+            muscle_forces=muscle_forces,
+            tau=tau,
+        )
+
+    @override
     def generate_dataset(self, data_point_count: int) -> DataSet:
         # TODO : Test this function
         # Extract the min and max for each q, qdot and activations
         q_ranges = np.array([(q_range[0], q_range[1]) for q_range in self._get_q_ranges()]).T
         qdot_ranges = np.array([(-10.0 * np.pi, 10.0 * np.pi) for _ in range(self._model.nbQdot())]).T
-        activations_ranges = np.array([(0.0, 1.0) for _ in range(self._muscle_count)]).T
+        activations_ranges = np.array([(0.0, 1.0) for _ in range(self.muscle_count)]).T
 
         # Generate a data set by selecting randomly combinations of q, qdot, and activations
         _logger.info(f"Generating a dataset of {data_point_count} data points. This may take a while...")
@@ -89,10 +131,23 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
 
             # Compute a data point from this input
             data_point_output = self._compute_data_point_output(data_point_input)
-            data_set.append(DataPoint(input=data_point_input, output=data_point_output))
+            data_set.append(DataPoint(input=data_point_input, target=data_point_output))
 
         _logger.info(f"Dataset generated in {time() - tic:.2f} seconds.")
         return data_set
+
+    @property
+    def q_count(self) -> int:
+        """
+        Get the number of degrees of freedom in the model.
+
+        Returns
+        -------
+        int
+            Number of degrees of freedom in the model.
+        """
+        # TODO : Test this function
+        return self._model.nbQ()
 
     @property
     def q_names(self) -> tuple[str, ...]:
@@ -108,6 +163,19 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         return tuple(f"q_{name.to_string().lower()}" for name in self._model.nameDof())
 
     @property
+    def qdot_count(self) -> int:
+        """
+        Get the number of generalized velocities in the model.
+
+        Returns
+        -------
+        int
+            Number of generalized velocities in the model.
+        """
+        # TODO : Test this function
+        return self._model.nbQdot()
+
+    @property
     def qdot_names(self) -> tuple[str, ...]:
         """
         Get the names of the generalized velocities in the model.
@@ -119,6 +187,19 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         """
         # TODO : Test this function
         return tuple(f"qdot_{name.to_string().lower()}" for name in self._model.nameDof())
+
+    @property
+    def tau_count(self) -> int:
+        """
+        Get the number of generalized forces in the model.
+
+        Returns
+        -------
+        int
+            Number of generalized forces in the model.
+        """
+        # TODO : Test this function
+        return self._model.nbGeneralizedTorque()
 
     @property
     def tau_names(self) -> tuple[str, ...]:
@@ -164,7 +245,7 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         return q_ranges
 
     @property
-    def _muscle_count(self) -> int:
+    def muscle_count(self) -> int:
         """
         Get the number of muscles in the model.
 
@@ -216,9 +297,9 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
             state.setActivation(activations[i])
 
         # Compute the outputs for each muscle
-        muscle_tendon_lengths = np.ndarray(self._muscle_count)
-        muscle_tendon_lengths_jacobian = np.ndarray((self._muscle_count, self._model.nbQ()))
-        muscle_forces = np.ndarray(self._muscle_count)
+        muscle_tendon_lengths = np.ndarray(self.muscle_count)
+        muscle_tendon_lengths_jacobian = np.ndarray((self.muscle_count, self._model.nbQ()))
+        muscle_forces = np.ndarray(self.muscle_count)
         for index, biorbd_muscle_index in enumerate(self._muscle_indices):
             muscle: biorbd.Muscle = self._model.muscle(biorbd_muscle_index)
 
@@ -235,3 +316,16 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
             muscle_forces=torch.tensor(muscle_forces),
             tau=torch.tensor(tau),
         )
+
+    @property
+    @override
+    def scaling_vector(self) -> torch.Tensor:
+        # TODO : Test this function
+        return torch.tensor(
+            (
+                [self._muscle_tendon_length_scale] * self.muscle_count
+                + [self._muscle_tendon_lengths_jacobian_scale] * self.muscle_count * self.q_count
+                + [self._muscle_forces_scale] * self.muscle_count
+                + [self._tau_scale] * self.tau_count
+            )
+        )[None, :]

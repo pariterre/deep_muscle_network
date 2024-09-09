@@ -1,15 +1,15 @@
 from dataclasses import dataclass, field
-from typing import override
+from typing import override, Self
 
 import torch
 
-from ...prediction_model.data_set import DataPointInputAbstract, DataPointOutputAbstract
+from ...prediction_model.data_set import DataCoordinatesAbstract
 
 # TODO : Inherit from a common interface from [neural_networks] package
 
 
 @dataclass(frozen=True)
-class DataPointInputBiorbd(DataPointInputAbstract):
+class DataPointInputBiorbd(DataCoordinatesAbstract):
     """
     Data input for the neural network.
 
@@ -45,7 +45,7 @@ class DataPointInputBiorbd(DataPointInputAbstract):
 
 
 @dataclass(frozen=True)
-class DataPointOutputBiorbd(DataPointOutputAbstract):
+class DataPointOutputBiorbd(DataCoordinatesAbstract):
     """
     Data output for the neural network.
 
