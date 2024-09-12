@@ -79,6 +79,6 @@ if __name__ == "__main__":
             output_mode=BiorbdOutputModes.MUSCLE,
         ),
         number_training_data_points=(2500, 250),
-        force_retrain=True,
+        force_retrain=False,
         plotter=PlotterMatplotlib(),
     )

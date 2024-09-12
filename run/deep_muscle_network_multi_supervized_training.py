@@ -177,11 +177,11 @@ def main_supervised_learning(Hyperparams, mode, nb_q, nb_segment, nb_muscle, num
     if retrain or os.path.exists(f"{folder_name_muscle}/_Model/{file_path}")==False : 
         create_directory(f"{folder_name_muscle}/_Model/{file_path}") # Muscle/Model
         
-        # Prepare datas for trainning
+        # Prepare datas for training
         train_loader, val_loader, test_loader, input_size, output_size, y_labels \
          = create_loaders_from_folder(Hyperparams, mode, nb_q, nb_segment, num_datas_for_dataset, f"{folder_name_muscle}", 
                                       muscle_name, with_noise, plot_preparation)
-        # Trainning
+        # Tranning
         model, _, _, _, _, _ = train_model_supervised_learning(train_loader, val_loader, test_loader, input_size, 
                                                                output_size, Hyperparams, 
                                                                f"{folder_name_muscle}/_Model/{file_path}", plot_loss_acc, save, 
@@ -246,7 +246,7 @@ def find_best_hyperparameters(try_hyperparams_ref, mode, nb_q, nb_segment, nb_mu
         num_try = 0
         best_val_loss = float('inf')
 
-    # Create loaders for trainning
+    # Create loaders for training
     folder_name = f"{folder}/{muscle_name}"
     train_loader, val_loader, test_loader, input_size, output_size, _ \
     = create_loaders_from_folder(try_hyperparams_ref, mode, nb_q, nb_segment, num_datas_for_dataset, folder_name, muscle_name, 
@@ -280,7 +280,7 @@ def find_best_hyperparameters(try_hyperparams_ref, mode, nb_q, nb_segment, nb_mu
                 # Train-Evaluate model
                 create_directory(f"{directory}/{num_try}")
                 
-                with measure_time() as train_timer: # timer --> trainning time
+                with measure_time() as train_timer: # timer --> training time
                     # Please, consider this mesure time as an estimation !
                     model, val_loss, test_acc, test_error, test_abs_error, epoch \
                     = train_model_supervised_learning(train_loader, val_loader, test_loader, 

@@ -167,8 +167,8 @@ class PredictionModel:
             epoch_count = len(training_values)
             _logger.info(
                 f"Epoch [{epoch_count}/{max_epochs}]\n"
-                f"\tLoss values: trainning={training_loss:.8f}, validation={validation_loss:.8f}\n"
-                f"\tAccuracies: trainning={training_accuracy:.6f}, validation={validation_accuracy:.6f}\n"
+                f"\tLoss values: training={training_loss:.8f}, validation={validation_loss:.8f}\n"
+                f"\tAccuracies: training={training_accuracy:.6f}, validation={validation_accuracy:.6f}\n"
                 f"\tCurrent learning rate = {scheduler.get_last_lr()}"
             )
 
@@ -291,7 +291,7 @@ class PredictionModel:
             # Put the model in training mode
             self._neural_network_model.prediction_model.train()
 
-            # If it is trainning, we are updating the model with each prediction, we therefore need to do it in a loop
+            # If it is training, we are updating the model with each prediction, we therefore need to do it in a loop
             running_loss = 0.0
             all_predictions = torch.tensor([])
             all_targets = torch.tensor([])
