@@ -1,9 +1,7 @@
 import os
 
-from ...utils.file_io_helpers import FileIoHelpers
 
-
-class PredictionModelFolderStructure:
+class NeuralNetworkFolderStructure:
     def __init__(self, base_folder: str) -> None:
         """
         Initialize the folder structure for the prediction model.
@@ -37,6 +35,10 @@ class PredictionModelFolderStructure:
         # TODO : Test this function
         return os.path.join(self.trained_model_folder, f"{model_name}.pth")
 
+    def hyper_parameters_model_path(self, model_name: str) -> str:
+        # TODO : Test this function
+        return os.path.join(self.trained_model_folder, f"{model_name}.json")
+
     def has_a_trained_model(self, model_name: str) -> bool:
         # TODO : Test this function
         return os.path.exists(self.trained_model_path(model_name))
@@ -53,7 +55,21 @@ class PredictionModelFolderStructure:
 
     def _create_folder_structure(self):
         # TODO : Test this function
-        FileIoHelpers.mkdir_if_not_exist(self._base_folder)
-        FileIoHelpers.mkdir_if_not_exist(self.trained_model_folder)
-        FileIoHelpers.mkdir_if_not_exist(self.data_set_folder)
-        FileIoHelpers.mkdir_if_not_exist(self.results_folder)
+        _mkdir_if_not_exist(self._base_folder)
+        _mkdir_if_not_exist(self.trained_model_folder)
+        _mkdir_if_not_exist(self.data_set_folder)
+        _mkdir_if_not_exist(self.results_folder)
+
+
+def _mkdir_if_not_exist(folder_path: str):
+    """
+    Create a new directory if it does not already exist. Otherwise, do nothing.
+
+    Parameters
+    ----------
+    folder_path : str
+        The path to the directory to create.
+    """
+    # TODO : Test this function
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)

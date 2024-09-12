@@ -27,6 +27,67 @@ class LossFunctionAbstract(torch.nn.Module, ABC):
             The mean loss value.
         """
 
+    def serialize(self) -> dict:
+        """
+        Serialize the loss function.
+
+        Returns
+        -------
+        dict
+            The serialized loss function.
+        """
+
+        return {"loss_type": self.__class__.__name__, "parameters": self._serialize()}
+
+    @abstractmethod
+    def _serialize(self) -> dict:
+        """
+        Serialize the loss function. This method should return a dictionary that will be sent back when deserializing the
+        loss function. The constructor should be able to use this dictionary to reconstruct the loss function.
+
+        Returns
+        -------
+        dict
+            The serialized loss function.
+        """
+
+    @classmethod
+    def deserialize(cls, parameters: dict):
+        """
+        Deserialize the loss function.
+
+        Parameters
+        ----------
+        parameters : dict
+            The serialized loss function.
+
+        Returns
+        -------
+        LossFunctionAbstract
+            The deserialized loss function.
+        """
+
+        loss_class_constructor = globals()[parameters["loss_type"]]
+        parameters = parameters["parameters"]
+        return loss_class_constructor(**parameters)
+
+    @abstractmethod
+    def _deserialize(self, **parameters: dict):
+        """
+        Deserialize the loss function. This method should return a new instance of the loss function using the
+        serialized dictionary.
+
+        Parameters
+        ----------
+        serialized_loss_function : dict
+            The serialized loss function.
+
+        Returns
+        -------
+        LossFunctionAbstract
+            The deserialized loss function.
+        """
+
 
 class LossFunctionModifiedHuber(LossFunctionAbstract):
     def __init__(self, delta: float = 1.0, factor: float = 1.5) -> None:
@@ -56,6 +117,14 @@ class LossFunctionModifiedHuber(LossFunctionAbstract):
         loss = 0.5 * quadratic**2 + delta_tensor * linear
         return torch.mean(loss * (1 + self.factor * abs_error), axis=1)
 
+    @override
+    def _serialize(self) -> dict:
+        return {"delta": self.delta, "factor": self.factor}
+
+    @classmethod
+    def _deserialize(cls, **serialized_loss_function):
+        return cls(**serialized_loss_function)
+
 
 class LossFunctionLogCosh(LossFunctionAbstract):
     def __init__(self, factor: float = 1.5) -> None:
@@ -78,6 +147,14 @@ class LossFunctionLogCosh(LossFunctionAbstract):
         logcosh = torch.log(torch.cosh(error))
         return torch.mean(logcosh * (1 + self.factor * torch.abs(error)), axis=1)
 
+    @override
+    def _serialize(self) -> dict:
+        return {"factor": self.factor}
+
+    @classmethod
+    def _deserialize(cls, **parameters):
+        return cls(**parameters)
+
 
 class LossFunctionExponential(LossFunctionAbstract):
     def __init__(self, alpha=0.5):
@@ -98,6 +175,14 @@ class LossFunctionExponential(LossFunctionAbstract):
         error = torch.abs(y_true - y_pred)
         loss = torch.exp(self.alpha * error) - 1
         return torch.mean(loss, axis=1)
+
+    @override
+    def _serialize(self) -> dict:
+        return {"alpha": self.alpha}
+
+    @classmethod
+    def _deserialize(cls, **parameters):
+        return cls(**parameters)
 
 
 class LossFunctionConstructors(Enum):

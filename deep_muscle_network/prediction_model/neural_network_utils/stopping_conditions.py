@@ -27,6 +27,67 @@ class StoppingConditionsAbstract(ABC):
         """
         pass
 
+    def serialize(self) -> dict:
+        """
+        Serialize the stopping condition.
+
+        Returns
+        -------
+        dict
+            The serialized stopping condition.
+        """
+
+        return {"stopping_condition": self.__class__.__name__, "parameters": self._serialize()}
+
+    @abstractmethod
+    def _serialize(self) -> dict:
+        """
+        Serialize the stopping condition. This method should return a dictionary that will be sent back when deserializing the
+        stopping condition. The constructor should be able to use this dictionary to reconstruct the stopping condition.
+
+        Returns
+        -------
+        dict
+            The serialized stopping condition.
+        """
+
+    @classmethod
+    def deserialize(cls, parameters: dict):
+        """
+        Deserialize the stopping condition.
+
+        Parameters
+        ----------
+        parameters : dict
+            The serialized stopping condition.
+
+        Returns
+        -------
+        LossFunctionAbstract
+            The deserialized stopping condition.
+        """
+
+        stopping_condition_class_constructor = globals()[parameters["stopping_condition"]]
+        parameters = parameters["parameters"]
+        return stopping_condition_class_constructor(**parameters)
+
+    @abstractmethod
+    def _deserialize(self, **parameters: dict):
+        """
+        Deserialize the stopping condition. This method should return a new instance of the stopping condition using the
+        serialized dictionary.
+
+        Parameters
+        ----------
+        serialized_loss_function : dict
+            The serialized stopping condition.
+
+        Returns
+        -------
+        LossFunctionAbstract
+            The deserialized stopping condition.
+        """
+
 
 class StoppingConditionMaxEpochs(StoppingConditionsAbstract):
     """
@@ -50,6 +111,14 @@ class StoppingConditionMaxEpochs(StoppingConditionsAbstract):
             return True
         self._current_epoch += 1
         return False
+
+    @override
+    def _serialize(self) -> dict:
+        return {"max_epochs": self._max_epochs}
+
+    @override
+    def _deserialize(self, **parameters: dict):
+        return StoppingConditionMaxEpochs(**parameters)
 
 
 class StoppingConditionHasStoppedImproving(StoppingConditionsAbstract):
@@ -89,6 +158,14 @@ class StoppingConditionHasStoppedImproving(StoppingConditionsAbstract):
             self._epochs_without_improvement = 0
 
         return False
+
+    @override
+    def _serialize(self) -> dict:
+        return {"patience": self._patience, "epsilon": self.epsilon}
+
+    @override
+    def _deserialize(self, **parameters: dict):
+        return StoppingConditionHasStoppedImproving(**parameters)
 
 
 class StoppingConditionConstructors(Enum):
