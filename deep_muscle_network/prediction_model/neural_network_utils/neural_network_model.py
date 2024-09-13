@@ -3,6 +3,7 @@ from typing import Protocol
 import torch
 
 from .activation_methods import ActivationMethodAbstract
+from .torch_utils import get_torch_device
 
 
 class NeuralNetwork(Protocol):
@@ -70,8 +71,9 @@ class NeuralNetworkModel(torch.nn.Module):
             layers.append(activations[i])
             layers.append(torch.nn.Dropout(dropout_probability))
         layers.append(torch.nn.Linear(first_and_hidden_layers_node_count[-1], (neural_network.output_layer_node_count)))
+
         self._forward_model = torch.nn.Sequential(*layers)
-        self._forward_model.double()
+        self._forward_model.double().to(get_torch_device())
 
         self.eval()
 

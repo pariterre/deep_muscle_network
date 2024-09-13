@@ -36,8 +36,8 @@ class PlotterMatplotlib(PlotterAbstract):
         row_count, col_count = _compute_ideal_row_to_column_count_ratio(data_count)
 
         y_labels = data_set.output_labels
-        targets = data_set.targets.numpy()
-        predictions = data_set.predictions.detach().numpy()
+        targets = data_set.targets.cpu().numpy()
+        predictions = data_set.predictions.detach().cpu().numpy()
         accuracy = data_set.predictions_accuracy
         relative_accuracy = data_set.relative_predictions_accuracy * 100
         precision = data_set.predictions_precision

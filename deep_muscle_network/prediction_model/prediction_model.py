@@ -1,6 +1,4 @@
-import json
 import logging
-import os
 
 import numpy as np
 import torch
@@ -10,6 +8,7 @@ from .neural_network_utils.neural_network import NeuralNetwork
 from .neural_network_utils.neural_network_folder_structure import NeuralNetworkFolderStructure
 from .neural_network_utils.loss_methods import LossFunctionAbstract, LossFunctionConstructors
 from .neural_network_utils.stopping_conditions import StoppingConditionMaxEpochs
+from .neural_network_utils.torch_utils import get_torch_device
 from ..reference_model.reference_model_abstract import ReferenceModelAbstract
 from ..plotter.plotter_abstract import PlotterAbstract
 
@@ -99,6 +98,8 @@ class PredictionModel:
         # TODO : Test this function
         # Set some aliases so the code is more readable
         self._neural_network = neural_network
+
+        # Put the output_scaling_vector to the right device
         self._neural_network.set_reference_values(
             input_layer_node_count=len(reference_model.input_labels),
             output_layer_node_count=len(reference_model.output_labels),
@@ -175,9 +176,8 @@ class PredictionModel:
         """
         # TODO : Test this function
 
-        device = self._get_device()
-        inputs = data_set.inputs.T.to(device)
-        out = self._neural_network.model(inputs)
+        inputs = data_set.inputs.T
+        out = self._neural_network.model(inputs).to(get_torch_device())
         if not normalized:
             out = self._denormalize_output_vector(out)
         return out.T
@@ -215,18 +215,6 @@ class PredictionModel:
         """
         # TODO : Test this function
         return output_vector * self._neural_network.output_scaling_vector
-
-    def _get_device(self) -> torch.device:
-        """
-        Get the device to use for the computations.
-
-        Returns
-        -------
-        torch.device
-            The device to use.
-        """
-        # TODO : Test this function
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def _perform_epoch_training(
         self,
@@ -268,10 +256,10 @@ class PredictionModel:
 
             # If it is training, we are updating the model with each prediction, we therefore need to do it in a loop
             running_loss = 0.0
-            all_predictions = torch.tensor([])
-            all_targets = torch.tensor([])
+            all_predictions = torch.tensor([]).to(get_torch_device())
+            all_targets = torch.tensor([]).to(get_torch_device())
             for data in data_set:
-                targets = self._normalize_output_vector(data.targets.T.to(self._get_device()))
+                targets = self._normalize_output_vector(data.targets.T)
                 self._neural_network.optimizer.zero_grad()
 
                 # Get the predictions and targets

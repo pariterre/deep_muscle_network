@@ -4,6 +4,7 @@ from typing import override, Self
 import torch
 
 from ...prediction_model.data_set import DataCoordinatesAbstract
+from ...prediction_model.neural_network_utils.torch_utils import get_torch_device
 
 # TODO : Inherit from a common interface from [neural_networks] package
 
@@ -36,7 +37,7 @@ class DataPointInputBiorbd(DataCoordinatesAbstract):
             raise ValueError("The activations, q, and qdot tensors should be one-dimensional tensors.")
 
         # Prepare the vector attribute
-        object.__setattr__(self, "_vector", torch.cat((self.activations, self.q, self.qdot)))
+        object.__setattr__(self, "_vector", torch.cat((self.activations, self.q, self.qdot)).to(get_torch_device()))
 
     @property
     @override
@@ -96,7 +97,7 @@ class DataPointOutputBiorbd(DataCoordinatesAbstract):
                     self.muscle_forces,
                     self.tau,
                 )
-            ),
+            ).to(get_torch_device()),
         )
 
     @property

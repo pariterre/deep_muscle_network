@@ -7,6 +7,7 @@ from .activation_methods import ActivationMethodAbstract, ActivationMethodConstr
 from .loss_methods import LossFunctionAbstract, LossFunctionConstructors
 from .neural_network_model import NeuralNetworkModel
 from .neural_network_folder_structure import NeuralNetworkFolderStructure
+from .torch_utils import get_torch_device
 from .stopping_conditions import StoppingConditionsAbstract, StoppingConditionConstructors
 
 
@@ -56,7 +57,7 @@ class NeuralNetwork:
     ) -> None:
         object.__setattr__(self, "input_layer_node_count", input_layer_node_count)
         object.__setattr__(self, "output_layer_node_count", output_layer_node_count)
-        object.__setattr__(self, "output_scaling_vector", output_scaling_vector)
+        object.__setattr__(self, "output_scaling_vector", output_scaling_vector.to(get_torch_device()))
         object.__setattr__(self, "model", NeuralNetworkModel(self))
         object.__setattr__(self, "optimizer", torch.optim.Adam(self.model.parameters(), self.learning_rate))
         object.__setattr__(self, "is_initialized", True)
