@@ -57,5 +57,6 @@ class TrainingData:
             json.dump(training_values, file, indent=2)
 
         # Save the training data set#
-        # RENDU ICI!!!!!!!!
+        # TODO: RENDU ICI!!!!!!!!
+        # TODO use np.random.get_state() to keep the seed used to generate the data (instead of saving the entire dataset)
         self.training_data_set.save(save_path)

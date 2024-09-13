@@ -113,6 +113,8 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
     def generate_dataset(self, data_point_count: int) -> DataSet:
         # TODO : Test this function
         # Extract the min and max for each q, qdot and activations
+
+        # TODO use np.random.get_state() to keep the current seed used
         q_ranges = np.array([(q_range[0], q_range[1]) for q_range in self._get_q_ranges()]).T
         qdot_ranges = np.array([(-10.0 * np.pi, 10.0 * np.pi) for _ in range(self._model.nbQdot())]).T
         activations_ranges = np.array([(0.0, 1.0) for _ in range(self.muscle_count)]).T
