@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import json
+from typing import Any
 
 import torch
 
@@ -62,21 +63,17 @@ class NeuralNetwork:
         object.__setattr__(self, "optimizer", torch.optim.Adam(self.model.parameters(), self.learning_rate))
         object.__setattr__(self, "is_initialized", True)
 
-    def save(self, base_folder: NeuralNetworkFolderStructure, model_name: str) -> None:
+    def serialize(self) -> dict[str, Any]:
         """
-        Save the hyper parameters to a file.
+        Serialize the hyper parameters.
 
-        Parameters
-        ----------
-        base_folder : PredictionModelFolderStructure
-            The folder structure where the hyper parameters will be saved.
-        model_name : str
-            Name of the model.
+        Returns
+        -------
+        dict[str, Any]
+            The serialized hyper parameters.
         """
-        model_file_path = base_folder.trained_model_path(model_name=model_name)
-        torch.save(self.model.state_dict(), model_file_path)
 
-        parameters = {
+        return {
             "training_data_count": self.training_data_count,
             "validation_data_count": self.validation_data_count,
             "use_batch_norm": self.use_batch_norm,
@@ -92,12 +89,56 @@ class NeuralNetwork:
             "learning_rate": self.learning_rate,
             "dropout_probability": self.dropout_probability,
         }
-        hyper_parameters_file_path = base_folder.hyper_parameters_model_path(model_name=model_name)
-        with open(hyper_parameters_file_path, "w") as file:
-            json.dump(parameters, file, indent=2)
 
-    @classmethod
-    def load(cls, base_folder: NeuralNetworkFolderStructure, model_name: str):
+    def has_a_trained_model(self, base_folder: NeuralNetworkFolderStructure) -> bool:
+        """
+        Check if a trained model exists.
+
+        Parameters
+        ----------
+        base_folder : PredictionModelFolderStructure
+            The folder structure where the trained model is saved.
+        model_name : str
+            Name of the model.
+
+        Returns
+        -------
+        bool
+            True if a trained model exists, False otherwise.
+        """
+        parameters = self.serialize()
+        previous_trainings = _load_previous_training(base_folder=base_folder)
+        key = _find_hyper_parameters_key_in_previous_trainings(parameters, previous_trainings)
+        return key in previous_trainings
+
+    def save(self, base_folder: NeuralNetworkFolderStructure, model_name: str) -> None:
+        """
+        Save the hyper parameters to a file.
+
+        Parameters
+        ----------
+        base_folder : PredictionModelFolderStructure
+            The folder structure where the hyper parameters will be saved.
+        model_name : str
+            Name of the model.
+        """
+
+        parameters = self.serialize()
+        previous_trainings = _load_previous_training(base_folder=base_folder)
+        key = _find_hyper_parameters_key_in_previous_trainings(
+            parameters=parameters, previous_trainings=previous_trainings
+        )
+        previous_trainings[key] = parameters
+
+        hyper_parameters_file_path = base_folder.hyper_parameters_model_path
+        with open(hyper_parameters_file_path, "w") as file:
+            # Add the super key (name of the model)
+            json.dump(previous_trainings, file, indent=2)
+
+        model_file_path = base_folder.trained_model_path(model_name=f"{model_name}_{key}")
+        torch.save(self.model.state_dict(), model_file_path)
+
+    def load(self, base_folder: NeuralNetworkFolderStructure, model_name: str) -> None:
         """
         Load the hyper parameters from a file.
 
@@ -109,35 +150,76 @@ class NeuralNetwork:
             Name of the model.
         """
 
-        with open(base_folder.hyper_parameters_model_path(model_name=model_name)) as file:
-            parameters: dict = json.load(file)
+        parameters = self.serialize()
+        previous_trainings = _load_previous_training(base_folder=base_folder)
+        key = _find_hyper_parameters_key_in_previous_trainings(parameters, previous_trainings)
+        if key not in previous_trainings:
+            raise FileNotFoundError(f"The model {model_name} has not been trained yet.")
+        parameters = previous_trainings[key]
 
-        neural_network = cls(
-            training_data_count=parameters["training_data_count"],
-            validation_data_count=parameters["validation_data_count"],
-            use_batch_norm=parameters["use_batch_norm"],
-            activations=tuple(
-                ActivationMethodAbstract.deserialize(serialized_activation)
-                for serialized_activation in parameters["activations"]
-            ),
-            hidden_layers_node_count=tuple(parameters["hidden_layers_node_count"]),
-            loss_function=LossFunctionAbstract.deserialize(parameters["loss_function"]),
-            stopping_conditions=tuple(
-                StoppingConditionsAbstract.deserialize(serialized_stopping_condition)
-                for serialized_stopping_condition in parameters["stopping_conditions"]
-            ),
-            learning_rate=parameters["learning_rate"],
-            dropout_probability=parameters["dropout_probability"],
+        self.model.load_state_dict(
+            torch.load(base_folder.trained_model_path(model_name=f"{model_name}_{key}"), weights_only=True)
         )
 
-        neural_network.set_reference_values(
-            input_layer_node_count=parameters["input_layer_node_count"],
-            output_layer_node_count=parameters["output_layer_node_count"],
-            output_scaling_vector=torch.tensor(parameters["output_scaling_vector"]),
-        )
 
-        neural_network.model.load_state_dict(
-            torch.load(base_folder.trained_model_path(model_name=model_name), weights_only=True)
-        )
+def _load_previous_training(base_folder: NeuralNetworkFolderStructure) -> dict[str, Any]:
+    """
+    Load the previous training from a file.
 
-        return neural_network
+    Parameters
+    ----------
+    base_folder : PredictionModelFolderStructure
+        The folder structure where the previous training is saved.
+    """
+
+    try:
+        with open(base_folder.hyper_parameters_model_path) as file:
+            return json.load(file)
+    except:
+        return {}
+
+
+def _find_hyper_parameters_key_in_previous_trainings(
+    parameters: dict[str, Any], previous_trainings: dict[str, Any]
+) -> str:
+    """
+    Find if the hyper parameters are identical to a previous training.
+
+    Parameters
+    ----------
+    parameters : dict[str, Any]
+        The hyper parameters to compare.
+    previous_trainings : dict[str, Any]
+        The previous trainings to compare with.
+
+    Returns
+    -------
+    str
+        The key of the identical hyper parameters. If no identical hyper parameters are found, a new keep is created.
+    """
+
+    for key, previous_parameters in previous_trainings.items():
+        if parameters.keys() != previous_parameters.keys():
+            continue
+
+        has_differences = False
+        for sub_key in parameters.keys():
+            if isinstance(parameters[sub_key], (list, tuple)):
+                if tuple(parameters[sub_key]) != tuple(previous_parameters[sub_key]):
+                    has_differences = True
+                    break
+            else:
+                if parameters[sub_key] != previous_parameters[sub_key]:
+                    has_differences = True
+                    break
+
+        if not has_differences:
+            return key
+
+    # Create a new unique key for the hyper parameters
+    for i in range(10000):
+        key = f"{i:04}"
+        if key not in previous_trainings:
+            return key
+    else:
+        raise RuntimeError("Too many trained models")

@@ -22,10 +22,10 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         muscle_names: tuple[str, ...],
         with_noise: bool = True,
         output_mode: BiorbdOutputModes = BiorbdOutputModes.TORQUE_MUS_DLMT_DQ,
-        muscle_tendon_length_normalization: float = 1.0,
-        muscle_tendon_lengths_jacobian_normalization: float = 0.1,
-        muscle_forces_normalization: float = 1000.0,
-        tau_normalization: float = 100.0,
+        muscle_tendon_length_normalization: float = 1.0 * 100.0,
+        muscle_tendon_lengths_jacobian_normalization: float = 10.0 * 100.0,
+        muscle_forces_normalization: float = 0.001 * 100.0,
+        tau_normalization: float = 0.01 * 100.0,
     ) -> None:
         """
         Constructor of the ReferenceModelBiorbd class.

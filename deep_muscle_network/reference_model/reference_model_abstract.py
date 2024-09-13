@@ -93,7 +93,8 @@ class ReferenceModelAbstract(ABC):
     @abstractmethod
     def scaling_vector(self) -> torch.Tensor:
         """
-        Get the scaling vector to normalize the output vector (normalization /=, denormalization *=).
+        Get the scaling vector to normalize the output vector (normalization *=, denormalization /=).
+        The normalization should try to make the data to range between 1 and 100
 
         Returns
         -------

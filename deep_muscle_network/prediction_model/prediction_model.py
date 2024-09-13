@@ -1,3 +1,4 @@
+from copy import deepcopy
 import logging
 
 import numpy as np
@@ -28,22 +29,30 @@ class PredictionModel:
         self._folder_structure = NeuralNetworkFolderStructure(path)
         self._neural_network: NeuralNetwork | None
 
-    def has_a_trained_model(self, reference_model: ReferenceModelAbstract) -> bool:
+    def _set_neural_network(
+        self,
+        reference_model: ReferenceModelAbstract,
+        neural_network: NeuralNetwork,
+    ) -> None:
         """
-        Check if a trained model exists for the given reference model.
+        Set the neural network configuration for the prediction model.
 
         Parameters
         ----------
         reference_model : ReferenceModelAbstract
             Reference model for the prediction model. It is used to create the training and validation datasets.
-
-        Returns
-        -------
-        bool
-            True if a trained model exists, False otherwise.
+        neural_network : NeuralNetwork
+            The neural network configuration to use to train the model.
         """
-        # TODO : Test this function
-        return self._folder_structure.has_a_trained_model(reference_model.name)
+
+        self._neural_network = deepcopy(neural_network)
+
+        # Put the output_scaling_vector to the right device
+        self._neural_network.set_reference_values(
+            input_layer_node_count=len(reference_model.input_labels),
+            output_layer_node_count=len(reference_model.output_labels),
+            output_scaling_vector=reference_model.scaling_vector,
+        )
 
     def save(self, reference_model: ReferenceModelAbstract) -> None:
         """
@@ -63,7 +72,38 @@ class PredictionModel:
         # Save the scaling vector
         self._neural_network.save(base_folder=self._folder_structure, model_name=reference_model.name)
 
-    def load(self, reference_model: ReferenceModelAbstract) -> None:
+    def load_if_exists(
+        self,
+        reference_model: ReferenceModelAbstract,
+        neural_network: NeuralNetwork,
+        plotter: PlotterAbstract | None = None,
+    ) -> None:
+        """
+        Load the model configuration from a file if it exists, otherwise it trains a new model.
+
+        Parameters
+        ----------
+        reference_model : ReferenceModelAbstract
+            Reference model for the prediction model. It is used to load the model if it exists. Otherwise, it is used to
+            create the training and validation datasets.
+        neural_network : NeuralNetwork
+            The neural network configuration to use to train the model. Ignored if the model already exists.
+        plotter : PlotterAbstract
+            The plotter to use to visualize the training, validation, and test results. If None, no plot will be generated.
+            Ignored if the model already exists.
+
+        """
+        # TODO : Test this method
+        try:
+            self.load(reference_model, neural_network)
+        except:
+            self.train(reference_model, neural_network, plotter)
+
+    def load(
+        self,
+        reference_model: ReferenceModelAbstract,
+        neural_network: NeuralNetwork,
+    ) -> None:
         """
         Load the model configuration from a file.
 
@@ -74,7 +114,8 @@ class PredictionModel:
         """
 
         # TODO : Test this method
-        self._neural_network = NeuralNetwork.load(base_folder=self._folder_structure, model_name=reference_model.name)
+        self._set_neural_network(reference_model, neural_network)
+        self._neural_network.load(base_folder=self._folder_structure, model_name=reference_model.name)
 
     def train(
         self,
@@ -96,19 +137,13 @@ class PredictionModel:
         """
 
         # TODO : Test this function
-        # Set some aliases so the code is more readable
-        self._neural_network = neural_network
-
-        # Put the output_scaling_vector to the right device
-        self._neural_network.set_reference_values(
-            input_layer_node_count=len(reference_model.input_labels),
-            output_layer_node_count=len(reference_model.output_labels),
-            output_scaling_vector=reference_model.scaling_vector,
-        )
+        self._set_neural_network(reference_model, neural_network)
 
         _logger.info("Training the model...")
-        training_data_set = reference_model.generate_dataset(data_point_count=neural_network.training_data_count)
-        validation_data_set = reference_model.generate_dataset(data_point_count=neural_network.validation_data_count)
+        training_data_set = reference_model.generate_dataset(data_point_count=self._neural_network.training_data_count)
+        validation_data_set = reference_model.generate_dataset(
+            data_point_count=self._neural_network.validation_data_count
+        )
 
         # More details about scheduler in documentation
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -121,19 +156,19 @@ class PredictionModel:
         current_loss = torch.inf
         max_epochs = min(
             cond.max_epochs
-            for cond in neural_network.stopping_conditions
+            for cond in self._neural_network.stopping_conditions
             if isinstance(cond, StoppingConditionMaxEpochs)
         )
         while not any(
-            [condition.should_stop(current_loss=current_loss) for condition in neural_network.stopping_conditions]
+            [condition.should_stop(current_loss=current_loss) for condition in self._neural_network.stopping_conditions]
         ):
             # TODO Add shuffling of the data?
 
             training_loss, training_accuracy = self._perform_epoch_training(
-                data_set=training_data_set, loss_function=neural_network.loss_function
+                data_set=training_data_set, loss_function=self._neural_network.loss_function
             )
             validation_loss, validation_accuracy = self._perform_epoch_training(
-                data_set=validation_data_set, loss_function=neural_network.loss_function, only_compute=True
+                data_set=validation_data_set, loss_function=self._neural_network.loss_function, only_compute=True
             )
 
             # Sanity check, if the loss is NaN, the training failed, you can check your activation function
@@ -177,7 +212,7 @@ class PredictionModel:
         # TODO : Test this function
 
         inputs = data_set.inputs.T
-        out = self._neural_network.model(inputs).to(get_torch_device())
+        out = self._neural_network.model(inputs)
         if not normalized:
             out = self._denormalize_output_vector(out)
         return out.T
@@ -197,7 +232,7 @@ class PredictionModel:
             The normalized output vector.
         """
         # TODO : Test this function
-        return output_vector / self._neural_network.output_scaling_vector
+        return output_vector * self._neural_network.output_scaling_vector
 
     def _denormalize_output_vector(self, output_vector: torch.Tensor) -> torch.Tensor:
         """
@@ -214,7 +249,7 @@ class PredictionModel:
             The denormalized output vector.
         """
         # TODO : Test this function
-        return output_vector * self._neural_network.output_scaling_vector
+        return output_vector / self._neural_network.output_scaling_vector
 
     def _perform_epoch_training(
         self,

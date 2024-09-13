@@ -35,13 +35,10 @@ class NeuralNetworkFolderStructure:
         # TODO : Test this function
         return os.path.join(self.trained_model_folder, f"{model_name}.pth")
 
-    def hyper_parameters_model_path(self, model_name: str) -> str:
+    @property
+    def hyper_parameters_model_path(self) -> str:
         # TODO : Test this function
-        return os.path.join(self.trained_model_folder, f"{model_name}.json")
-
-    def has_a_trained_model(self, model_name: str) -> bool:
-        # TODO : Test this function
-        return os.path.exists(self.trained_model_path(model_name))
+        return os.path.join(self.trained_model_folder, f"hyper_parameters.json")
 
     @property
     def data_set_folder(self) -> str:

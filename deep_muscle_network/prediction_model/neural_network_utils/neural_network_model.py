@@ -95,4 +95,4 @@ class NeuralNetworkModel(torch.nn.Module):
         output = torch.Tensor(x.shape[0], self._forward_model[-1].out_features)
         for i, data in enumerate(x):
             output[i, :] = self._forward_model(data)
-        return output
+        return output.to(get_torch_device())
