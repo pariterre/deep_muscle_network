@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from ..prediction_model.data_set import DataSet, DataCoordinatesAbstract
+from ..prediction_model.neural_network_utils.data_set import DataSet, DataCoordinatesAbstract
 
 
 class ReferenceModelAbstract(ABC):

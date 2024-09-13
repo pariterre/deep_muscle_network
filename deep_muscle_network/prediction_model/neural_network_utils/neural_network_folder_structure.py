@@ -22,28 +22,40 @@ class NeuralNetworkFolderStructure:
         return self._base_folder
 
     @property
-    def trained_model_folder(self) -> str:
+    def model_folder(self) -> str:
         # TODO : Test this function
         return os.path.join(self._base_folder, "Models")
 
-    @property
-    def prediction_model_output_mode_path(self) -> str:
-        # TODO : Test this function
-        return os.path.join(self.trained_model_folder, f"prediction_model_output_mode.json")
-
     def trained_model_path(self, model_name: str) -> str:
         # TODO : Test this function
-        return os.path.join(self.trained_model_folder, f"{model_name}.pth")
+        return os.path.join(self.model_folder, f"{model_name}.pth")
 
     @property
     def hyper_parameters_model_path(self) -> str:
         # TODO : Test this function
-        return os.path.join(self.trained_model_folder, f"hyper_parameters.json")
+        return os.path.join(self.model_folder, f"hyper_parameters.json")
 
     @property
-    def data_set_folder(self) -> str:
+    def data_folder(self) -> str:
         # TODO : Test this function
         return os.path.join(self._base_folder, "Data")
+
+    @property
+    def training_data_folder(self) -> str:
+        # TODO : Test this function
+        return os.path.join(self.data_folder, "Training")
+
+    def training_values_file_path(self, model_name: str) -> str:
+        # TODO : Test this function
+        return os.path.join(self.training_data_folder, f"{model_name}.json")
+
+    def training_data_set_file_path(self, model_name: str) -> str:
+        # TODO : Test this function
+        return os.path.join(self.training_data_folder, f"{model_name}_training_data_set.pth")
+
+    def validation_data_set_file_path(self, model_name: str) -> str:
+        # TODO : Test this function
+        return os.path.join(self.training_data_folder, f"{model_name}_validation_data_set.pth")
 
     @property
     def results_folder(self) -> str:
@@ -53,8 +65,9 @@ class NeuralNetworkFolderStructure:
     def _create_folder_structure(self):
         # TODO : Test this function
         _mkdir_if_not_exist(self._base_folder)
-        _mkdir_if_not_exist(self.trained_model_folder)
-        _mkdir_if_not_exist(self.data_set_folder)
+        _mkdir_if_not_exist(self.model_folder)
+        _mkdir_if_not_exist(self.data_folder)
+        _mkdir_if_not_exist(self.training_data_folder)
         _mkdir_if_not_exist(self.results_folder)
 
 

@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Callable
 
-from ..prediction_model.data_set import DataSet
+from ..prediction_model.neural_network_utils.data_set import DataSet
+from ..prediction_model.neural_network_utils.training_data import TrainingData
 
 
 class PlotterAbstract(ABC):
@@ -17,7 +18,7 @@ class PlotterAbstract(ABC):
         """
 
     @abstractmethod
-    def plot_loss_and_accuracy(self) -> Callable[[list[tuple[float, float, float, float]]], None]:
+    def plot_loss_and_accuracy(self) -> TrainingData:
         """
         Prepare the online training. Returns a callback function that should be called at each epoch that will update the
         plot.

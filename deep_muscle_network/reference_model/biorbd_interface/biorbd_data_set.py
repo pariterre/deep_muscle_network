@@ -3,7 +3,7 @@ from typing import override, Self
 
 import torch
 
-from ...prediction_model.data_set import DataCoordinatesAbstract
+from ...prediction_model.neural_network_utils.data_set import DataCoordinatesAbstract
 from ...prediction_model.neural_network_utils.torch_utils import get_torch_device
 
 # TODO : Inherit from a common interface from [neural_networks] package

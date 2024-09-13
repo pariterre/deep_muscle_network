@@ -9,7 +9,7 @@ import torch
 from .biorbd_data_set import DataPointInputBiorbd, DataPointOutputBiorbd
 from .biorbd_output_modes import BiorbdOutputModes
 from ..reference_model_abstract import ReferenceModelAbstract
-from ...prediction_model.data_set import DataSet, DataPoint
+from ...prediction_model.neural_network_utils.data_set import DataSet, DataPoint
 
 _logger = logging.getLogger(__name__)
 

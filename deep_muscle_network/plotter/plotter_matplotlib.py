@@ -7,7 +7,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from .plotter_abstract import PlotterAbstract
-from ..prediction_model.data_set import DataSet
+from ..prediction_model.neural_network_utils.data_set import DataSet
+from ..prediction_model.neural_network_utils.training_data import TrainingData
 
 
 class PlotterMatplotlib(PlotterAbstract):
@@ -73,7 +74,7 @@ class PlotterMatplotlib(PlotterAbstract):
             return fig
 
     @override
-    def plot_loss_and_accuracy(self, data: list[tuple[float, float, float, float]]):
+    def plot_loss_and_accuracy(self, data: TrainingData):
         """
         Plot the training and validation loss and accuracy during training.
 

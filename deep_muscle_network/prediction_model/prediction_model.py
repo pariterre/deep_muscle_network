@@ -4,11 +4,12 @@ import logging
 import numpy as np
 import torch
 
-from .data_set import DataSet
+from .neural_network_utils.data_set import DataSet
 from .neural_network_utils.neural_network import NeuralNetwork
 from .neural_network_utils.neural_network_folder_structure import NeuralNetworkFolderStructure
 from .neural_network_utils.loss_methods import LossFunctionAbstract, LossFunctionConstructors
 from .neural_network_utils.stopping_conditions import StoppingConditionMaxEpochs
+from .neural_network_utils.training_data import TrainingData
 from .neural_network_utils.torch_utils import get_torch_device
 from ..reference_model.reference_model_abstract import ReferenceModelAbstract
 from ..plotter.plotter_abstract import PlotterAbstract
@@ -54,7 +55,7 @@ class PredictionModel:
             output_scaling_vector=reference_model.scaling_vector,
         )
 
-    def save(self, reference_model: ReferenceModelAbstract) -> None:
+    def save(self, reference_model: ReferenceModelAbstract) -> str:
         """
         Save the model configuration to a file.
 
@@ -62,6 +63,11 @@ class PredictionModel:
         ----------
         reference_model : ReferenceModelAbstract
             Reference model for the prediction model. It is used to create the training and validation
+
+        Returns
+        -------
+        str
+            The file name without extension
         """
         # TODO : Test this method
         if self._neural_network is None:
@@ -70,7 +76,7 @@ class PredictionModel:
             )
 
         # Save the scaling vector
-        self._neural_network.save(base_folder=self._folder_structure, model_name=reference_model.name)
+        return self._neural_network.save(base_folder=self._folder_structure, model_name=reference_model.name)
 
     def load_if_exists(
         self,
@@ -139,19 +145,21 @@ class PredictionModel:
         # TODO : Test this function
         self._set_neural_network(reference_model, neural_network)
 
+        # Save some data about the training process itself
         _logger.info("Training the model...")
-        training_data_set = reference_model.generate_dataset(data_point_count=self._neural_network.training_data_count)
-        validation_data_set = reference_model.generate_dataset(
-            data_point_count=self._neural_network.validation_data_count
+        training_data = TrainingData(
+            training_data_set=reference_model.generate_dataset(
+                data_point_count=self._neural_network.training_data_count
+            ),
+            validation_data_set=reference_model.generate_dataset(
+                data_point_count=self._neural_network.validation_data_count
+            ),
         )
 
         # More details about scheduler in documentation
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self._neural_network.optimizer, mode="min", factor=0.1, patience=20, min_lr=1e-8
         )
-
-        # Training values which correspond to the training losses, training accuracies, validation losses, and validation accuracies
-        training_values: list[tuple[float, float, float, float]] = []
 
         current_loss = torch.inf
         max_epochs = min(
@@ -163,35 +171,38 @@ class PredictionModel:
             [condition.should_stop(current_loss=current_loss) for condition in self._neural_network.stopping_conditions]
         ):
             # TODO Add shuffling of the data?
-
             training_loss, training_accuracy = self._perform_epoch_training(
-                data_set=training_data_set, loss_function=self._neural_network.loss_function
+                data_set=training_data.training_data_set,
+                loss_function=self._neural_network.loss_function,
             )
             validation_loss, validation_accuracy = self._perform_epoch_training(
-                data_set=validation_data_set, loss_function=self._neural_network.loss_function, only_compute=True
+                data_set=training_data.validation_data_set,
+                loss_function=self._neural_network.loss_function,
+                only_compute=True,
             )
+            training_data.add_epoch(training_loss, training_accuracy, validation_loss, validation_accuracy)
 
             # Sanity check, if the loss is NaN, the training failed, you can check your activation function
             if np.isnan(training_accuracy) or np.isnan(validation_accuracy):
                 break
 
-            epoch_count = len(training_values)
             _logger.info(
-                f"Epoch [{epoch_count}/{max_epochs}]\n"
+                f"Epoch [{training_data.epoch_count}/{max_epochs}]\n"
                 f"\tLoss values: training={training_loss:.8f}, validation={validation_loss:.8f}\n"
                 f"\tAccuracies: training={training_accuracy:.6f}, validation={validation_accuracy:.6f}\n"
                 f"\tCurrent learning rate = {scheduler.get_last_lr()}"
             )
 
             scheduler.step(validation_loss)  # Adjust/reduce learning rate
-            training_values.append((training_loss, validation_loss, training_accuracy, validation_accuracy))
             current_loss = validation_loss
 
         # Save and plot the results
         _logger.info(f"Training complete, final loss: {training_loss:.8f}")
-        self.save(reference_model)
+        model_file_name = self.save(reference_model)
+        training_data.save(base_folder=self._folder_structure, model_file_name=model_file_name)
+
         if plotter is not None:
-            plotter.plot_loss_and_accuracy(training_values)
+            plotter.plot_loss_and_accuracy(training_data)
 
     def predict(self, data_set: DataSet, normalized: bool = False) -> torch.Tensor:
         """

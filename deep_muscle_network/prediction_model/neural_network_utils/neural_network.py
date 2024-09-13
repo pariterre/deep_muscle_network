@@ -111,7 +111,7 @@ class NeuralNetwork:
         key = _find_hyper_parameters_key_in_previous_trainings(parameters, previous_trainings)
         return key in previous_trainings
 
-    def save(self, base_folder: NeuralNetworkFolderStructure, model_name: str) -> None:
+    def save(self, base_folder: NeuralNetworkFolderStructure, model_name: str) -> str:
         """
         Save the hyper parameters to a file.
 
@@ -121,6 +121,11 @@ class NeuralNetwork:
             The folder structure where the hyper parameters will be saved.
         model_name : str
             Name of the model.
+
+        Returns
+        -------
+        str
+            The file name where the model is saved, whitout the extension.
         """
 
         parameters = self.serialize()
@@ -135,8 +140,10 @@ class NeuralNetwork:
             # Add the super key (name of the model)
             json.dump(previous_trainings, file, indent=2)
 
-        model_file_path = base_folder.trained_model_path(model_name=f"{model_name}_{key}")
+        model_file_name = f"{model_name}_{key}"
+        model_file_path = base_folder.trained_model_path(model_name=model_file_name)
         torch.save(self.model.state_dict(), model_file_path)
+        return model_file_name
 
     def load(self, base_folder: NeuralNetworkFolderStructure, model_name: str) -> None:
         """

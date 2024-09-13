@@ -125,8 +125,8 @@ class DataSet(torch.utils.data.Dataset):
             The reference model to use to dispatch the predictions
         """
         # TODO : Test this function
-        from ..prediction_model import PredictionModel
-        from ..reference_model import ReferenceModelAbstract
+        from .. import PredictionModel
+        from ...reference_model import ReferenceModelAbstract
 
         if not isinstance(prediction_model, PredictionModel):
             raise TypeError("The prediction_model should be an instance of PredictionModel.")
