@@ -1,5 +1,6 @@
 from copy import deepcopy
 import logging
+from time import time
 
 import numpy as np
 import torch
@@ -11,8 +12,8 @@ from .neural_network_utils.loss_methods import LossFunctionAbstract, LossFunctio
 from .neural_network_utils.stopping_conditions import StoppingConditionMaxEpochs
 from .neural_network_utils.training_data import TrainingData
 from .neural_network_utils.torch_utils import get_torch_device
-from ..reference_model.reference_model_abstract import ReferenceModelAbstract
-from ..plotter.plotter_abstract import PlotterAbstract
+from ..reference_model.reference_model import ReferenceModel
+from ..plotter.plotter import Plotter
 
 _logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class PredictionModel:
 
     def _set_neural_network(
         self,
-        reference_model: ReferenceModelAbstract,
+        reference_model: ReferenceModel,
         neural_network: NeuralNetwork,
     ) -> None:
         """
@@ -55,7 +56,7 @@ class PredictionModel:
             output_scaling_vector=reference_model.scaling_vector,
         )
 
-    def save(self, reference_model: ReferenceModelAbstract) -> str:
+    def save(self, reference_model: ReferenceModel) -> str:
         """
         Save the model configuration to a file.
 
@@ -80,10 +81,10 @@ class PredictionModel:
 
     def load_if_exists(
         self,
-        reference_model: ReferenceModelAbstract,
+        reference_model: ReferenceModel,
         neural_network: NeuralNetwork,
-        plotter: PlotterAbstract | None = None,
-    ) -> None:
+        plotter: Plotter | None = None,
+    ) -> TrainingData:
         """
         Load the model configuration from a file if it exists, otherwise it trains a new model.
 
@@ -94,23 +95,27 @@ class PredictionModel:
             create the training and validation datasets.
         neural_network : NeuralNetwork
             The neural network configuration to use to train the model. Ignored if the model already exists.
-        plotter : PlotterAbstract
+        plotter : Plotter
             The plotter to use to visualize the training, validation, and test results. If None, no plot will be generated.
             Ignored if the model already exists.
 
+        Returns
+        -------
+        TrainingData
+            The training data containing the loss and accuracy values during the training process.
         """
         # TODO : Test this method
         try:
-            self.load(reference_model, neural_network, plotter)
+            return self.load(reference_model, neural_network, plotter)
         except:
-            self.train(reference_model, neural_network, plotter)
+            return self.train(reference_model, neural_network, plotter)
 
     def load(
         self,
-        reference_model: ReferenceModelAbstract,
+        reference_model: ReferenceModel,
         neural_network: NeuralNetwork,
-        plotter: PlotterAbstract | None = None,
-    ) -> None:
+        plotter: Plotter | None = None,
+    ) -> TrainingData:
         """
         Load the model configuration from a file.
 
@@ -118,27 +123,35 @@ class PredictionModel:
         ----------
         reference_model : ReferenceModelAbstract
             Reference model for the prediction model. It is used to create the training and validation
+
+        Returns
+        -------
+        TrainingData
+            The training data containing the loss and accuracy values during the training process.
         """
 
         # TODO : Test this method
         self._set_neural_network(reference_model, neural_network)
         file_name = self._neural_network.load(base_folder=self._folder_structure, model_name=reference_model.name)
 
+        training_data = TrainingData.load(
+            neural_network=self._neural_network,
+            reference_model=reference_model,
+            base_folder=self._folder_structure,
+            model_file_name=file_name,
+        )
+
         if plotter is not None:
-            training_data = TrainingData.load(
-                neural_network=self._neural_network,
-                reference_model=reference_model,
-                base_folder=self._folder_structure,
-                model_file_name=file_name,
-            )
             plotter.plot_loss_and_accuracy(training_data)
+
+        return training_data
 
     def train(
         self,
-        reference_model: ReferenceModelAbstract,
+        reference_model: ReferenceModel,
         neural_network: NeuralNetwork,
-        plotter: PlotterAbstract | None = None,
-    ) -> None:
+        plotter: Plotter | None = None,
+    ) -> TrainingData:
         """
         Train a model using supervised learning. The model is automatically saved after training.
 
@@ -148,8 +161,13 @@ class PredictionModel:
             Reference model for the prediction model. It is used to create the training and validation datasets.
         hyper_parameters : HyperParameters
             Hyperparameters used to train the model.
-        plotter : PlotterAbstract
+        plotter : Plotter
             The plotter to use to visualize the training, validation, and test results. If None, no plot will be generated.
+
+        Returns
+        -------
+        TrainingData
+            The training data containing the loss and accuracy values during the training process.
         """
 
         # TODO : Test this function
@@ -181,6 +199,7 @@ class PredictionModel:
             for cond in self._neural_network.stopping_conditions
             if isinstance(cond, StoppingConditionMaxEpochs)
         )
+        tic = time()
         while not any(
             [condition.should_stop(current_loss=current_loss) for condition in self._neural_network.stopping_conditions]
         ):
@@ -201,7 +220,7 @@ class PredictionModel:
                 break
 
             _logger.info(
-                f"Epoch [{training_data.epoch_count}/{max_epochs}]\n"
+                f"Epoch [{training_data.epoch_count - 1}/{max_epochs}]\n"
                 f"\tLoss values: training={training_loss:.8f}, validation={validation_loss:.8f}\n"
                 f"\tAccuracies: training={training_accuracy:.6f}, validation={validation_accuracy:.6f}\n"
                 f"\tCurrent learning rate = {scheduler.get_last_lr()}"
@@ -209,14 +228,18 @@ class PredictionModel:
 
             scheduler.step(validation_loss)  # Adjust/reduce learning rate
             current_loss = validation_loss
+        toc = time()
+        training_data.set_training_time(toc - tic)
 
         # Save and plot the results
-        _logger.info(f"Training complete, final loss: {training_loss:.8f}")
+        _logger.info(f"Training completed in: {training_data.training_time:.2f}s, final loss: {training_loss:.8f}")
         model_file_name = self.save(reference_model)
         training_data.save(base_folder=self._folder_structure, model_file_name=model_file_name)
 
         if plotter is not None:
             plotter.plot_loss_and_accuracy(training_data)
+
+        return training_data
 
     def predict(self, data_set: DataSet, normalized: bool = False) -> torch.Tensor:
         """

@@ -126,12 +126,12 @@ class DataSet(torch.utils.data.Dataset):
         """
         # TODO : Test this function
         from .. import PredictionModel
-        from ...reference_model import ReferenceModelAbstract
+        from ...reference_model import ReferenceModel
 
         if not isinstance(prediction_model, PredictionModel):
             raise TypeError("The prediction_model should be an instance of PredictionModel.")
 
-        if not isinstance(reference_model, ReferenceModelAbstract):
+        if not isinstance(reference_model, ReferenceModel):
             raise TypeError("The reference_model should be an instance of ReferenceModelAbstract.")
 
         predictions = prediction_model.predict(data_set=self)

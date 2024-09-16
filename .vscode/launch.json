@@ -12,5 +12,13 @@
             "cwd": "${workspaceFolder}/run",
             "console": "integratedTerminal"
         },
+        {
+            "name": "Multi supervized training",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run/multi_supervized_training.py",
+            "cwd": "${workspaceFolder}/run",
+            "console": "integratedTerminal"
+        },
     ]
 }

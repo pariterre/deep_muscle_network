@@ -6,7 +6,7 @@ import torch
 from ..prediction_model.neural_network_utils.data_set import DataSet, DataCoordinatesAbstract
 
 
-class ReferenceModelAbstract(ABC):
+class ReferenceModel(ABC):
     def __init__(self, with_noise: bool) -> None:
         self._with_noise = with_noise
 
@@ -84,7 +84,9 @@ class ReferenceModelAbstract(ABC):
     ) -> DataSet | tuple[DataSet, Any]:
         """
         Generate a random dataset. If [get_seed] is True, the seed used to generate the data is returned along with
-        the dataset as a second return value.
+        the dataset as a second return value. The implementation of this method should include the capability to load
+        data from the seed if it was already generated during the session, as it may very well occur that the same data
+        is requested multiple times.
 
         Parameters
         ----------

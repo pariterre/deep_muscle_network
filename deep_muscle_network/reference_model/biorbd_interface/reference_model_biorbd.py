@@ -8,13 +8,13 @@ import torch
 
 from .biorbd_data_set import DataPointInputBiorbd, DataPointOutputBiorbd
 from .biorbd_output_modes import BiorbdOutputModes
-from ..reference_model_abstract import ReferenceModelAbstract
+from ..reference_model import ReferenceModel
 from ...prediction_model.neural_network_utils.data_set import DataSet, DataPoint
 
 _logger = logging.getLogger(__name__)
 
 
-class ReferenceModelBiorbd(ReferenceModelAbstract):
+class ReferenceModelBiorbd(ReferenceModel):
 
     def __init__(
         self,
@@ -51,6 +51,8 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         self._muscle_tendon_lengths_jacobian_scale = muscle_tendon_lengths_jacobian_normalization
         self._muscle_forces_scale = muscle_forces_normalization
         self._tau_scale = tau_normalization
+
+        self._pregenerate_data_set: dict[tuple, DataSet] = {}
 
     @property
     @override
@@ -116,9 +118,21 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         # TODO : Test this function
         # Extract the min and max for each q, qdot and activations
 
-        seed = np.random.get_state() if seed is None else seed
-        np.random.set_state(seed)
+        np.random.set_state(np.random.get_state() if seed is None else seed)
+        seed = np.random.get_state()
+        json_seed = (seed[0], seed[1].tolist(), seed[2], seed[3], seed[4])
 
+        pregenerated_key = f"{json_seed};data count={data_point_count}"
+        if pregenerated_key in self._pregenerate_data_set:
+            # Move the seed to cursor to the expected position after the generation
+            np.random.uniform(0, 1, len(self.input_labels) * data_point_count)
+
+            if get_seed:
+                return self._pregenerate_data_set[pregenerated_key], json_seed
+            else:
+                return self._pregenerate_data_set[pregenerated_key]
+
+        # TODO Add noise
         q_ranges = np.array([(q_range[0], q_range[1]) for q_range in self._get_q_ranges()]).T
         qdot_ranges = np.array([(-10.0 * np.pi, 10.0 * np.pi) for _ in range(self._model.nbQdot())]).T
         activations_ranges = np.array([(0.0, 1.0) for _ in range(self.muscle_count)]).T
@@ -140,9 +154,8 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
             data_set.append(DataPoint(input=data_point_input, target=data_point_output))
 
         _logger.info(f"Dataset generated in {time() - tic:.2f} seconds.")
-
+        self._pregenerate_data_set[pregenerated_key] = data_set
         if get_seed:
-            json_seed = (seed[0], seed[1].tolist(), seed[2], seed[3], seed[4])
             return data_set, json_seed
         else:
             return data_set

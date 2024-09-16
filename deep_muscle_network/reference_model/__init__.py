@@ -1,6 +1,6 @@
-from .reference_model_abstract import ReferenceModelAbstract
+from .reference_model import ReferenceModel
 from .biorbd_interface import *
 
 __all__ = [
-    ReferenceModelAbstract.__name__,
+    ReferenceModel.__name__,
 ] + biorbd_interface.__all__

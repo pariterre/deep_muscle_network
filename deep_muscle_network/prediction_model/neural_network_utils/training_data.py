@@ -5,7 +5,7 @@ from typing import Any, Self
 from .neural_network import NeuralNetwork
 from .neural_network_folder_structure import NeuralNetworkFolderStructure
 from .data_set import DataSet
-from ...reference_model.reference_model_abstract import ReferenceModelAbstract
+from ...reference_model.reference_model import ReferenceModel
 
 
 @dataclass
@@ -17,6 +17,7 @@ class TrainingData:
     validation_data_set_seed: Any = field(default=None)
 
     epoch_count: int = field(init=False, default=0)
+    training_time: float = field(init=False, default=None)
 
     training_loss: list[float] = field(init=False, default_factory=list)
     training_accuracy: list[float] = field(init=False, default_factory=list)
@@ -50,12 +51,24 @@ class TrainingData:
         self.validation_loss.append(validation_loss)
         self.validation_accuracy.append(validation_accuracy)
 
+    def set_training_time(self, training_time: float) -> None:
+        """
+        Set the training time.
+
+        Parameters
+        ----------
+        training_time: float
+            The training time in seconds.
+        """
+        object.__setattr__(self, "training_time", training_time)
+
     def save(self, base_folder: NeuralNetworkFolderStructure, model_file_name: str) -> None:
         # Save the training values
         training_values = {
             "training_data_set_seed": self.training_data_set_seed,
             "validation_data_set_seed": self.validation_data_set_seed,
             "epoch_count": self.epoch_count,
+            "training_time": self.training_time,
             "training_loss": self.training_loss,
             "training_accuracy": self.training_accuracy,
             "validation_loss": self.validation_loss,
@@ -68,7 +81,7 @@ class TrainingData:
     def load(
         cls,
         neural_network: NeuralNetwork,
-        reference_model: ReferenceModelAbstract,
+        reference_model: ReferenceModel,
         base_folder: NeuralNetworkFolderStructure,
         model_file_name: str,
     ) -> Self:
@@ -94,6 +107,7 @@ class TrainingData:
 
         object.__setattr__(data, "epoch_count", training_values["epoch_count"])
         object.__setattr__(data, "training_loss", training_values["training_loss"])
+        object.__setattr__(data, "training_time", training_values["training_time"])
         object.__setattr__(data, "training_accuracy", training_values["training_accuracy"])
         object.__setattr__(data, "validation_loss", training_values["validation_loss"])
         object.__setattr__(data, "validation_accuracy", training_values["validation_accuracy"])

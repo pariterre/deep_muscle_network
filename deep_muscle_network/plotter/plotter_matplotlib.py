@@ -1,17 +1,17 @@
 from math import sqrt
-from functools import partial
-from threading import Timer
-from typing import Callable, override
+from typing import override
 
 from matplotlib import pyplot as plt
 import numpy as np
+import torch
 
-from .plotter_abstract import PlotterAbstract
+from .utils import get_pareto_front_indices
+from .plotter import Plotter
 from ..prediction_model.neural_network_utils.data_set import DataSet
 from ..prediction_model.neural_network_utils.training_data import TrainingData
 
 
-class PlotterMatplotlib(PlotterAbstract):
+class PlotterMatplotlib(Plotter):
     def __init__(self, show_legends: bool = True):
         self._show_legends = show_legends
 
@@ -111,6 +111,49 @@ class PlotterMatplotlib(PlotterAbstract):
         # Update the plot
         plt.tight_layout()
         plt.show(block=False)
+
+    def pareto_front(
+        self, x_data: torch.Tensor, y_data: torch.Tensor, title: str | None, x_label: str | None, y_label: str | None
+    ) -> None:
+        if len(x_data) != len(y_data):
+            raise ValueError("The x and y data must have the same length.")
+
+        # Generate unique colors for each point using a colormap
+        point_count = len(x_data)
+        colors = plt.cm.jet(np.linspace(0, 1, point_count))  # Use the jet colormap for diversity
+
+        # Configure plot size and scale
+        plt.figure(figsize=(10, 5))
+        plt.xscale("log")
+        plt.yscale("log")
+
+        # Detect Pareto front points
+        pareto_front_indices = get_pareto_front_indices(x_data=x_data, y_data=y_data)
+
+        # Plot each point and highlight Pareto front points
+        for i in range(point_count):
+            plt.scatter(x_data[i], y_data[i], marker="P", color=colors[i])  # Plot each point
+
+            # Highlight and annotate Pareto front points
+            if i in pareto_front_indices:
+                plt.scatter(x_data[i], y_data[i], edgecolor="black", facecolor="none", s=100)
+                plt.text(x_data[i], y_data[i], i, fontsize=9, ha="right", weight="bold")
+
+        # Draw a line connecting Pareto front points
+        pareto_points = sorted([(x_data[i], y_data[i]) for i in pareto_front_indices])
+        pareto_x, pareto_y = zip(*pareto_points)  # Unzip into x and y components
+        plt.plot(pareto_x, pareto_y, linestyle="--", color="black", alpha=0.6, label="Pareto_front")
+
+        # Label axes and set plot title
+        if x_label is not None:
+            plt.xlabel(x_label)
+        if y_label is not None:
+            plt.ylabel(y_label)
+        if title is not None:
+            plt.title(title)
+
+        plt.grid(True)
+        plt.show()
 
 
 def _compute_ideal_row_to_column_count_ratio(element_count: int) -> tuple[int, int]:

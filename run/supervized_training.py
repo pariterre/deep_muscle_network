@@ -1,15 +1,13 @@
 import logging
 
 from deep_muscle_network import (
-    ReferenceModelAbstract,
+    ReferenceModel,
     PredictionModel,
-    NeuralNetworkModel,
-    ActivationMethodConstructors,
     LossFunctionConstructors,
     StoppingConditionConstructors,
     ReferenceModelBiorbd,
     BiorbdOutputModes,
-    PlotterAbstract,
+    Plotter,
     PlotterMatplotlib,
     NeuralNetwork,
 )
@@ -17,10 +15,10 @@ from deep_muscle_network import (
 
 def main(
     prediction_model: PredictionModel,
-    reference_model: ReferenceModelAbstract,
+    reference_model: ReferenceModel,
     neural_network: NeuralNetwork,
     force_retrain: bool,
-    plotter: PlotterAbstract,
+    plotter: Plotter,
 ):
     """
     Main function to prepare, train, validate, test, and save a model.
@@ -36,12 +34,11 @@ def main(
     force_retrain: bool
         If True, the model will be retrained even if a model is found in the [save_and_load_folder]. If no model is found,
         then this parameter has no effect.
-    plotter: PlotterAbstract
+    plotter: Plotter
         The plotter to use to visualize the training, validation, and test results.
     """
 
     # Create a folder for save plots
-    # Train_model if retrain == True or if none file_path already exist
     if force_retrain:
         prediction_model.train(reference_model=reference_model, neural_network=neural_network, plotter=plotter)
     else:
