@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 import torch
 
@@ -78,15 +79,32 @@ class ReferenceModelAbstract(ABC):
         return self._with_noise
 
     @abstractmethod
-    def generate_dataset(self, data_point_count: int) -> DataSet:
+    def generate_dataset(
+        self, data_point_count: int, get_seed: bool = False, seed: Any = None
+    ) -> DataSet | tuple[DataSet, Any]:
         """
-        Generate a reference dataset for the training of the prediction model.
+        Generate a random dataset. If [get_seed] is True, the seed used to generate the data is returned along with
+        the dataset as a second return value.
 
         Parameters
         ----------
         data_point_count: int
             Number of DataPoint to generate. For each DataPoint, a set of DataPointInput is randomly generated, and the
             appropriate DataPointOutput is computed.
+        get_seed: bool
+            If True, the seed used to generate the data is returned along with the dataset as a second return value. Said
+            seed must be json serializable.
+        seed: Any
+            If not None, the data is generated using this seed, otherwise a random seed is used. If both [get_seed]
+            and [seed] are provided, the [seed] is directly returned as the second return value as it will be the seed
+            used to generate the data. The seed is the json serializable object used to generate the data.
+
+        Returns
+        -------
+        DataSet
+            The generated dataset.
+        Any
+            The seed used to generate the data. Only returned if [get_random_seed] is True.
         """
 
     @property

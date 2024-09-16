@@ -1,6 +1,6 @@
 import logging
 from time import time
-from typing import override
+from typing import override, Any
 
 import biorbd
 import numpy as np
@@ -110,11 +110,15 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
         )
 
     @override
-    def generate_dataset(self, data_point_count: int) -> DataSet:
+    def generate_dataset(
+        self, data_point_count: int, get_seed: bool = False, seed: Any = None
+    ) -> DataSet | tuple[DataSet, Any]:
         # TODO : Test this function
         # Extract the min and max for each q, qdot and activations
 
-        # TODO use np.random.get_state() to keep the current seed used
+        seed = np.random.get_state() if seed is None else seed
+        np.random.set_state(seed)
+
         q_ranges = np.array([(q_range[0], q_range[1]) for q_range in self._get_q_ranges()]).T
         qdot_ranges = np.array([(-10.0 * np.pi, 10.0 * np.pi) for _ in range(self._model.nbQdot())]).T
         activations_ranges = np.array([(0.0, 1.0) for _ in range(self.muscle_count)]).T
@@ -136,7 +140,12 @@ class ReferenceModelBiorbd(ReferenceModelAbstract):
             data_set.append(DataPoint(input=data_point_input, target=data_point_output))
 
         _logger.info(f"Dataset generated in {time() - tic:.2f} seconds.")
-        return data_set
+
+        if get_seed:
+            json_seed = (seed[0], seed[1].tolist(), seed[2], seed[3], seed[4])
+            return data_set, json_seed
+        else:
+            return data_set
 
     @property
     def q_count(self) -> int:

@@ -145,7 +145,7 @@ class NeuralNetwork:
         torch.save(self.model.state_dict(), model_file_path)
         return model_file_name
 
-    def load(self, base_folder: NeuralNetworkFolderStructure, model_name: str) -> None:
+    def load(self, base_folder: NeuralNetworkFolderStructure, model_name: str) -> str:
         """
         Load the hyper parameters from a file.
 
@@ -155,6 +155,11 @@ class NeuralNetwork:
             The folder structure where the hyper parameters will be loaded.
         model_name : str
             Name of the model.
+
+        Returns
+        -------
+        str
+            The file name where the model is loaded, whitout the extension.
         """
 
         parameters = self.serialize()
@@ -164,9 +169,9 @@ class NeuralNetwork:
             raise FileNotFoundError(f"The model {model_name} has not been trained yet.")
         parameters = previous_trainings[key]
 
-        self.model.load_state_dict(
-            torch.load(base_folder.trained_model_path(model_name=f"{model_name}_{key}"), weights_only=True)
-        )
+        file_name = f"{model_name}_{key}"
+        self.model.load_state_dict(torch.load(base_folder.trained_model_path(model_name=file_name), weights_only=True))
+        return file_name
 
 
 def _load_previous_training(base_folder: NeuralNetworkFolderStructure) -> dict[str, Any]:

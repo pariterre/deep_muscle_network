@@ -101,7 +101,7 @@ class PredictionModel:
         """
         # TODO : Test this method
         try:
-            self.load(reference_model, neural_network)
+            self.load(reference_model, neural_network, plotter)
         except:
             self.train(reference_model, neural_network, plotter)
 
@@ -109,6 +109,7 @@ class PredictionModel:
         self,
         reference_model: ReferenceModelAbstract,
         neural_network: NeuralNetwork,
+        plotter: PlotterAbstract | None = None,
     ) -> None:
         """
         Load the model configuration from a file.
@@ -121,7 +122,16 @@ class PredictionModel:
 
         # TODO : Test this method
         self._set_neural_network(reference_model, neural_network)
-        self._neural_network.load(base_folder=self._folder_structure, model_name=reference_model.name)
+        file_name = self._neural_network.load(base_folder=self._folder_structure, model_name=reference_model.name)
+
+        if plotter is not None:
+            training_data = TrainingData.load(
+                neural_network=self._neural_network,
+                reference_model=reference_model,
+                base_folder=self._folder_structure,
+                model_file_name=file_name,
+            )
+            plotter.plot_loss_and_accuracy(training_data)
 
     def train(
         self,
@@ -147,13 +157,17 @@ class PredictionModel:
 
         # Save some data about the training process itself
         _logger.info("Training the model...")
+        training_data_set, training_data_set_seed = reference_model.generate_dataset(
+            data_point_count=self._neural_network.training_data_count, get_seed=True
+        )
+        validation_data_set, validation_data_set_seed = reference_model.generate_dataset(
+            data_point_count=self._neural_network.validation_data_count, get_seed=True
+        )
         training_data = TrainingData(
-            training_data_set=reference_model.generate_dataset(
-                data_point_count=self._neural_network.training_data_count
-            ),
-            validation_data_set=reference_model.generate_dataset(
-                data_point_count=self._neural_network.validation_data_count
-            ),
+            training_data_set=training_data_set,
+            training_data_set_seed=training_data_set_seed,
+            validation_data_set=validation_data_set,
+            validation_data_set_seed=validation_data_set_seed,
         )
 
         # More details about scheduler in documentation

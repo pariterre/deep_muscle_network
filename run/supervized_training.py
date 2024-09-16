@@ -77,6 +77,6 @@ if __name__ == "__main__":
             ),
             loss_function=LossFunctionConstructors.MODIFIED_HUBER(delta=0.2, factor=1.0),
         ),
-        force_retrain=True,
+        force_retrain=False,
         plotter=PlotterMatplotlib(),
     )

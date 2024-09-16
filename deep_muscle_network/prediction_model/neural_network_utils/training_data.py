@@ -1,8 +1,11 @@
 from dataclasses import dataclass, field
 import json
+from typing import Any, Self
 
+from .neural_network import NeuralNetwork
 from .neural_network_folder_structure import NeuralNetworkFolderStructure
 from .data_set import DataSet
+from ...reference_model.reference_model_abstract import ReferenceModelAbstract
 
 
 @dataclass
@@ -10,7 +13,10 @@ class TrainingData:
     training_data_set: DataSet
     validation_data_set: DataSet
 
-    epoch_count: int = 0
+    training_data_set_seed: Any = field(default=None)
+    validation_data_set_seed: Any = field(default=None)
+
+    epoch_count: int = field(init=False, default=0)
 
     training_loss: list[float] = field(init=False, default_factory=list)
     training_accuracy: list[float] = field(init=False, default_factory=list)
@@ -47,6 +53,8 @@ class TrainingData:
     def save(self, base_folder: NeuralNetworkFolderStructure, model_file_name: str) -> None:
         # Save the training values
         training_values = {
+            "training_data_set_seed": self.training_data_set_seed,
+            "validation_data_set_seed": self.validation_data_set_seed,
             "epoch_count": self.epoch_count,
             "training_loss": self.training_loss,
             "training_accuracy": self.training_accuracy,
@@ -56,7 +64,38 @@ class TrainingData:
         with open(base_folder.training_values_file_path(model_name=model_file_name), "w") as file:
             json.dump(training_values, file, indent=2)
 
-        # Save the training data set#
-        # TODO: RENDU ICI!!!!!!!!
-        # TODO use np.random.get_state() to keep the seed used to generate the data (instead of saving the entire dataset)
-        self.training_data_set.save(save_path)
+    @classmethod
+    def load(
+        cls,
+        neural_network: NeuralNetwork,
+        reference_model: ReferenceModelAbstract,
+        base_folder: NeuralNetworkFolderStructure,
+        model_file_name: str,
+    ) -> Self:
+        with open(base_folder.training_values_file_path(model_name=model_file_name), "r") as file:
+            training_values = json.load(file)
+
+        training_data_set_seed = training_values["training_data_set_seed"]
+        training_data_set = reference_model.generate_dataset(
+            data_point_count=neural_network.training_data_count, seed=training_data_set_seed
+        )
+
+        validation_data_set_seed = training_values["validation_data_set_seed"]
+        validation_data_set = reference_model.generate_dataset(
+            data_point_count=neural_network.validation_data_count, seed=validation_data_set_seed
+        )
+
+        data = cls(
+            training_data_set=training_data_set,
+            training_data_set_seed=training_data_set_seed,
+            validation_data_set=validation_data_set,
+            validation_data_set_seed=validation_data_set_seed,
+        )
+
+        object.__setattr__(data, "epoch_count", training_values["epoch_count"])
+        object.__setattr__(data, "training_loss", training_values["training_loss"])
+        object.__setattr__(data, "training_accuracy", training_values["training_accuracy"])
+        object.__setattr__(data, "validation_loss", training_values["validation_loss"])
+        object.__setattr__(data, "validation_accuracy", training_values["validation_accuracy"])
+
+        return data

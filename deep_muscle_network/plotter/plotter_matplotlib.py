@@ -90,22 +90,22 @@ class PlotterMatplotlib(PlotterAbstract):
         fig.suptitle("Training and validation loss during training", fontweight="bold")
 
         # Plot the data
-        x_data = np.arange(len(data))
+        x_data = np.arange(data.epoch_count)
 
         ax: plt.Axes = axs[0]
         ax.set_xlabel("Epoch")
         ax.set_ylabel("Loss value")
         ax.set_title("Loss value")
-        ax.plot(x_data, [value[0] for value in data], label="Training loss")
-        ax.plot(x_data, [value[1] for value in data], label="Validation loss")
+        ax.plot(x_data, data.training_loss, label="Training loss")
+        ax.plot(x_data, data.validation_loss, label="Validation loss")
         ax.legend()
 
         ax: plt.Axes = axs[1]
         ax.set_xlabel("Epoch")
         ax.set_ylabel("Accuracy")
         ax.set_title("Accuracy")
-        ax.plot(x_data, [value[2] for value in data], label="Training accuracy")
-        ax.plot(x_data, [value[3] for value in data], label="Validation accuracy")
+        ax.plot(x_data, data.training_accuracy, label="Training accuracy")
+        ax.plot(x_data, data.validation_accuracy, label="Validation accuracy")
         ax.legend()
 
         # Update the plot
