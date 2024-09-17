@@ -103,6 +103,7 @@ def main(
             else prediction_model.load_if_exists(reference_model=reference_model, neural_network=neural_network)
         )
         prediction_models.append(deepcopy(prediction_model))
+        logging.info(f"")
 
     # Compute the prediction time for each model
     logging.info("Computing prediction time for each model")
@@ -114,6 +115,7 @@ def main(
         )
         for prediction_model in prediction_models
     ]
+    logging.info(f"")
 
     # Find the model with the lowest final loss values
     best_index: int = 0
@@ -146,9 +148,13 @@ def main(
     prediction_model.load(reference_model=reference_model, neural_network=neural_network, plotter=plotter)
 
     # Vizualize the prediction quality
-    test_data_set = reference_model.generate_dataset(data_point_count=250)
+    np.random.seed(42)
+    test_data_set = reference_model.generate_dataset(data_point_count=2500)
     test_data_set.fill_predictions(prediction_model, reference_model)
     plotter.plot_prediction(test_data_set)
+
+    if isinstance(plotter, PlotterMatplotlib):
+        plotter.show()
 
 
 if __name__ == "__main__":
@@ -162,13 +168,24 @@ if __name__ == "__main__":
             muscle_tendon_length_normalization=1.0 * 1000.0,
         ),
         neural_networks=_generate_configurations(
-            training_data_count=(2500,),
-            validation_data_count=(250,),
-            hidden_layers_node_count=((128, 128), (256, 256), (512, 512), (1024, 1024), (2048, 2048)),
+            training_data_count=(25000,),
+            validation_data_count=(2500,),
+            hidden_layers_node_count=(
+                (128, 128),
+                (256, 256),
+                (512, 512),
+                (1024, 1024),
+                (2048, 2048),
+                (128, 128, 128),
+                (256, 256, 256),
+                (512, 512, 512),
+                (1024, 1024, 1024),
+                (2048, 2048, 2048),
+            ),
             use_batch_norm=(True,),
             stopping_conditions=(
                 (
-                    StoppingConditionConstructors.MAX_EPOCHS(max_epochs=1),
+                    StoppingConditionConstructors.MAX_EPOCHS(max_epochs=1000),
                     StoppingConditionConstructors.HAS_STOPPED_IMPROVING(patience=50, epsilon=1e-5),
                 ),
             ),

@@ -222,7 +222,7 @@ class PredictionModel:
             _logger.info(
                 f"Epoch [{training_data.epoch_count - 1}/{max_epochs}]\n"
                 f"\tLoss values: training={training_loss:.8f}, validation={validation_loss:.8f}\n"
-                f"\tAccuracies: training={training_accuracy:.6f}, validation={validation_accuracy:.6f}\n"
+                f"\tAccuracies : training={training_accuracy:.8f}, validation={validation_accuracy:.8f}\n"
                 f"\tCurrent learning rate = {scheduler.get_last_lr()}"
             )
 

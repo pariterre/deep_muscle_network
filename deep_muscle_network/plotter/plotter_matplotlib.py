@@ -12,11 +12,17 @@ from ..prediction_model.neural_network_utils.training_data import TrainingData
 
 
 class PlotterMatplotlib(Plotter):
-    def __init__(self, show_legends: bool = True):
+    def __init__(self, show_legends: bool = False):
         self._show_legends = show_legends
 
+    def show(self):
+        """
+        Plot the figures in a blocking way.
+        """
+        plt.show()
+
     @override
-    def plot_prediction(self, data_set: DataSet, show_now: bool = True) -> plt.Figure | None:
+    def plot_prediction(self, data_set: DataSet) -> plt.Figure | None:
         """
         Plot the predictions and targets of the data set.
 
@@ -24,8 +30,6 @@ class PlotterMatplotlib(Plotter):
         ----------
         data_set : DataSet
             The data set to plot the predictions and targets.
-        show_now : bool, optional
-            If True, the plot is shown now. Otherwise, it is returned.
 
         Returns
         -------
@@ -66,12 +70,7 @@ class PlotterMatplotlib(Plotter):
 
         fig.suptitle(f"Predictions and targets", fontweight="bold")
         plt.tight_layout()
-
-        if show_now:
-            plt.show()
-            return None
-        else:
-            return fig
+        plt.show(block=False)
 
     @override
     def plot_loss_and_accuracy(self, data: TrainingData):
@@ -153,7 +152,7 @@ class PlotterMatplotlib(Plotter):
             plt.title(title)
 
         plt.grid(True)
-        plt.show()
+        plt.show(block=False)
 
 
 def _compute_ideal_row_to_column_count_ratio(element_count: int) -> tuple[int, int]:
